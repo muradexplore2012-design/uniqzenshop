@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        request.auth.uid == 'MB2gmA9yrEc6d33WZOF9dr1czWz1'
+      );
+    }
+
+    // Public read for gadget photography and banners
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() &&
+                   request.resource.size < 10 * 1024 * 1024 &&
+                   request.resource.contentType.matches('image/.*');
+    }
+  }
+}
