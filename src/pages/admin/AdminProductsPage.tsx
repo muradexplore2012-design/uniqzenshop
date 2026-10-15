@@ -70,17 +70,18 @@ export const AdminProductsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to deactivate / archive "${name}"?`)) {
+    if (!window.confirm(`Are you sure you want to permanently delete "${name}"? This action cannot be undone.`)) {
       return;
     }
     try {
-      await deleteProduct(id, true);
-      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, active: false } : p)));
+      await deleteProduct(id, false);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
       if (currentUser) {
-        logAdminAction(currentUser.uid, 'product.archive', 'product', id, { name }, currentUser.email || '');
+        logAdminAction(currentUser.uid, 'product.delete', 'product', id, { name }, currentUser.email || '');
       }
-    } catch (e) {
-      alert('Failed to archive product');
+    } catch (e: any) {
+      console.error('Delete error:', e);
+      alert('Failed to delete product: ' + (e?.message || 'Permission denied'));
     }
   };
 
@@ -288,7 +289,7 @@ export const AdminProductsPage: React.FC = () => {
                         <button
                           onClick={() => handleDelete(product.id, product.name)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                          title="Archive Product"
+                          title="Delete Product"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

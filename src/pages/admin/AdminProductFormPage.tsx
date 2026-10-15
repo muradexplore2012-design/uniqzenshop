@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { SEO } from '../../components/common/SEO';
 import { ImageUploader } from '../../components/admin/ImageUploader';
-import { getProductById, saveProduct } from '../../services/productService';
+import { getProductById, saveProduct, deleteProduct } from '../../services/productService';
 import { getAllCategoriesAdmin } from '../../services/categoryService';
 import { logAdminAction } from '../../services/auditService';
 import { useAuth } from '../../lib/authContext';
@@ -36,6 +36,15 @@ const SUGGESTED_SPEC_KEYS = [
   'Sensors',
 ];
 
+const DEFAULT_CATEGORIES: Category[] = [
+  { id: 'smartwatches', name: 'Smartwatches', slug: 'smartwatches', active: true, sortOrder: 1 },
+  { id: 'earbuds', name: 'Earbuds & TWS', slug: 'earbuds', active: true, sortOrder: 2 },
+  { id: 'headphones', name: 'Headphones', slug: 'headphones', active: true, sortOrder: 3 },
+  { id: 'speakers', name: 'Bluetooth Speakers', slug: 'speakers', active: true, sortOrder: 4 },
+  { id: 'powerbanks', name: 'Power Banks & Chargers', slug: 'powerbanks', active: true, sortOrder: 5 },
+  { id: 'accessories', name: 'Smart Accessories', slug: 'accessories', active: true, sortOrder: 6 },
+];
+
 export const AdminProductFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id && id !== 'new');
@@ -45,6 +54,7 @@ export const AdminProductFormPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -99,10 +109,19 @@ export const AdminProductFormPage: React.FC = () => {
           if (!isEditing) {
             setCategory((prev) => prev || cats[0].slug || cats[0].id);
           }
+        } else {
+          setCategories(DEFAULT_CATEGORIES);
+          if (!isEditing) {
+            setCategory((prev) => prev || DEFAULT_CATEGORIES[0].slug);
+          }
         }
       })
       .catch((err) => {
         console.warn('Failed to load categories, using defaults:', err);
+        setCategories(DEFAULT_CATEGORIES);
+        if (!isEditing) {
+          setCategory((prev) => prev || DEFAULT_CATEGORIES[0].slug);
+        }
       });
 
     if (isEditing && id) {
@@ -304,6 +323,26 @@ export const AdminProductFormPage: React.FC = () => {
     }
   };
 
+  const handleDeleteProduct = async () => {
+    if (!id || !isEditing) return;
+    if (!window.confirm(`Are you sure you want to permanently delete "${name}"? This action cannot be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteProduct(id, false);
+      if (currentUser) {
+        logAdminAction(currentUser.uid, 'product.delete', 'product', id, { name }, currentUser.email || '');
+      }
+      navigate('/admin/products');
+    } catch (err: any) {
+      console.error('Delete product error:', err);
+      setErrorMsg(err.message || 'Failed to delete product.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -337,15 +376,28 @@ export const AdminProductFormPage: React.FC = () => {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => handleSubmit()}
-          disabled={saving}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primary-hover text-white text-xs sm:text-sm font-bold shadow-sm transition-all disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveSuccess ? <CheckCircle className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
-          <span>{saving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Product'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {isEditing && (
+            <button
+              type="button"
+              onClick={handleDeleteProduct}
+              disabled={saving || deleting}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs sm:text-sm font-bold shadow-xs transition-all disabled:opacity-50"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4 text-rose-600" />}
+              <span>{deleting ? 'Deleting...' : 'Delete'}</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => handleSubmit()}
+            disabled={saving || deleting}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primary-hover text-white text-xs sm:text-sm font-bold shadow-sm transition-all disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveSuccess ? <CheckCircle className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
+            <span>{saving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Product'}</span>
+          </button>
+        </div>
       </div>
 
       {errorMsg && (
@@ -975,21 +1027,36 @@ export const AdminProductFormPage: React.FC = () => {
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-3 pt-4">
-          <Link
-            to="/admin/products"
-            className="px-5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primary-hover text-white text-xs sm:text-sm font-bold shadow-md transition-all disabled:opacity-50 flex items-center gap-2"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveSuccess ? <CheckCircle className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
-            <span>{saving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save & Publish Product'}</span>
-          </button>
+        <div className="flex items-center justify-between pt-4">
+          <div>
+            {isEditing && (
+              <button
+                type="button"
+                onClick={handleDeleteProduct}
+                disabled={saving || deleting}
+                className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs sm:text-sm font-bold shadow-xs transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4 text-rose-600" />}
+                <span>{deleting ? 'Deleting...' : 'Delete Product'}</span>
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/admin/products"
+              className="px-5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={saving || deleting}
+              className="px-6 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primary-hover text-white text-xs sm:text-sm font-bold shadow-md transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveSuccess ? <CheckCircle className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
+              <span>{saving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save & Publish Product'}</span>
+            </button>
+          </div>
         </div>
 
       </form>

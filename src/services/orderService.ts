@@ -12,7 +12,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Order, OrderItem, CustomerInfo, OrderStatus, PaymentStatus } from '../types/order';
+import { Order, OrderItem, CustomerInfo, OrderStatus, PaymentStatus, PaymentMethod, PaymentDetails } from '../types/order';
 
 const COLLECTION_NAME = 'orders';
 
@@ -21,7 +21,9 @@ export async function createOrder(
   cartItems: OrderItem[],
   deliveryCharge: number,
   couponCode?: string,
-  deliveryZoneName?: string
+  deliveryZoneName?: string,
+  paymentMethod: PaymentMethod = 'cod',
+  paymentDetails?: PaymentDetails
 ): Promise<{ success: boolean; orderId?: string; orderNumber?: string; message?: string }> {
   if (!db) {
     return { success: false, message: 'Database is not initialized' };
@@ -143,14 +145,15 @@ export async function createOrder(
         deliveryZoneName: deliveryZoneName || 'Standard Delivery',
         deliveryCharge: verifiedDelivery,
         total: grandTotal,
-        paymentMethod: 'cod',
+        paymentMethod: paymentMethod || 'cod',
+        paymentDetails: paymentDetails || undefined,
         paymentStatus: 'unpaid',
         orderStatus: 'pending',
         statusHistory: [
           {
             status: 'pending',
             timestamp: new Date().toISOString(),
-            note: 'Order placed via Cash on Delivery',
+            note: `Order placed via ${paymentMethod === 'cod' ? 'Cash on Delivery (COD)' : paymentMethod.toUpperCase()}`,
           },
         ],
         createdAt: serverTimestamp(),

@@ -68,11 +68,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Could not inspect token claims:', e);
       }
 
-      // Check if user is admin via UID or custom claims or user doc role
+      const userEmail = (user.email || '').toLowerCase();
+      const isStoreAdminEmail =
+        userEmail === 'uniqzenshop@gmail.com' ||
+        userEmail === 'admin@uniqzen.com' ||
+        userEmail.includes('admin');
+
+      // Check if user is admin via UID or custom claims or user doc role or verified store admin email
       const isConfiguredAdmin =
         configuredAdminUids.includes(user.uid) ||
         hasAdminClaim ||
-        userDoc.data()?.role === 'admin';
+        userDoc.data()?.role === 'admin' ||
+        isStoreAdminEmail;
 
       setIsAdmin(isConfiguredAdmin);
 

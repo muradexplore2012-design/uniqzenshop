@@ -220,7 +220,15 @@ export const OrderTrackingPage: React.FC = () => {
               Delivery Zone: <strong>{order.deliveryZoneName || 'Standard Delivery'}</strong>
             </span>
             <span>
-              Total: <strong>{formatCurrency(order.total)}</strong> (Cash on Delivery)
+              Total: <strong>{formatCurrency(order.total)}</strong> ({
+                order.paymentMethod === 'bkash'
+                  ? 'bKash'
+                  : order.paymentMethod === 'nagad'
+                  ? 'Nagad'
+                  : order.paymentMethod === 'upay'
+                  ? 'Upay'
+                  : 'Cash on Delivery'
+              })
             </span>
           </div>
         </div>

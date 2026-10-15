@@ -194,3 +194,95 @@ export async function makeUserAdmin(
     };
   }
 }
+
+/**
+ * Fetches all users who have administrative access
+ */
+export async function getAdminUsers(): Promise<UserProfile[]> {
+  if (!db) return [];
+  try {
+    const configuredUids = (
+      import.meta.env.VITE_ADMIN_UID || 'MB2gmA9yrEc6d33WZOF9dr1czWz1,pXg4B6DxU6OCe1PkEGe8DJWnMH72'
+    )
+      .split(',')
+      .map((s: string) => s.trim())
+      .filter(Boolean);
+
+    const usersRef = collection(db, 'users');
+    const snap = await getDocs(usersRef);
+    const list: UserProfile[] = [];
+
+    snap.docs.forEach((docSnap) => {
+      const data = docSnap.data() as UserProfile;
+      const uid = docSnap.id;
+      const email = (data.email || '').toLowerCase();
+      const isConfigured = configuredUids.includes(uid);
+      const isRoleAdmin = data.role === 'admin';
+      const isStoreEmail = email === 'uniqzenshop@gmail.com' || email === 'admin@uniqzen.com';
+
+      if (isRoleAdmin || isConfigured || isStoreEmail) {
+        list.push({
+          ...data,
+          uid,
+          role: 'admin',
+        });
+      }
+    });
+
+    // Sort: Newest created/updated first
+    return list.sort((a, b) => {
+      const timeA = a.updatedAt?.seconds || a.createdAt?.seconds || 0;
+      const timeB = b.updatedAt?.seconds || b.createdAt?.seconds || 0;
+      return timeB - timeA;
+    });
+  } catch (err) {
+    console.error('Error fetching admin users:', err);
+    return [];
+  }
+}
+
+/**
+ * Revokes administrator role from a user and sets role back to customer
+ */
+export async function revokeAdminRole(
+  targetUid: string,
+  caller: { uid: string; email?: string }
+): Promise<{ success: boolean; message: string }> {
+  if (!db) {
+    return { success: false, message: 'Database not connected.' };
+  }
+  if (caller.uid === targetUid) {
+    return { success: false, message: 'You cannot revoke your own administrator access.' };
+  }
+
+  try {
+    const userDocRef = doc(db, 'users', targetUid);
+    await updateDoc(userDocRef, {
+      role: 'customer',
+      updatedAt: serverTimestamp(),
+    });
+
+    if (caller.uid) {
+      logAdminAction(
+        caller.uid,
+        'admin.revoke',
+        'user',
+        targetUid,
+        { method: 'firestore-role' },
+        caller.email || ''
+      );
+    }
+
+    return {
+      success: true,
+      message: 'Admin access successfully revoked. User role set back to customer.',
+    };
+  } catch (err: any) {
+    console.error('Error revoking admin role:', err);
+    return {
+      success: false,
+      message: err.message || 'Failed to revoke admin role.',
+    };
+  }
+}
+

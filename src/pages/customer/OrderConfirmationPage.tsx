@@ -136,8 +136,27 @@ export const OrderConfirmationPage: React.FC = () => {
               {formatCurrency(order?.total)}
             </span>
           </div>
-          <div className="pt-2 text-slate-500 flex items-center justify-between text-[11px]">
-            <span>Payment Method: <strong>Cash on Delivery (COD)</strong></span>
+          <div className="pt-2 text-slate-500 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-1 border-t border-slate-100">
+            <div>
+              <span>
+                Payment Method:{' '}
+                <strong className="text-slate-800">
+                  {order?.paymentMethod === 'bkash'
+                    ? 'bKash Personal'
+                    : order?.paymentMethod === 'nagad'
+                    ? 'Nagad Personal'
+                    : order?.paymentMethod === 'upay'
+                    ? 'Upay Personal'
+                    : 'Cash on Delivery (COD)'}
+                </strong>
+              </span>
+              {order?.paymentDetails?.transactionId && (
+                <span className="block text-[11px] text-slate-500 font-mono mt-0.5">
+                  TrxID: {order.paymentDetails.transactionId}
+                  {order.paymentDetails.senderNumber ? ` (${order.paymentDetails.senderNumber})` : ''}
+                </span>
+              )}
+            </div>
             <span>Status: <strong className="uppercase text-amber-600 font-bold">{order?.orderStatus || 'Pending'}</strong></span>
           </div>
         </div>

@@ -31,7 +31,7 @@ export const Footer: React.FC = () => {
   const instagramUrl = settings.instagramUrl || '';
 
   return (
-    <footer className="bg-[#0b1320] text-slate-300 mt-16 pt-14 pb-6 border-t border-slate-800/80">
+    <footer id="site-footer" className="bg-[#0b1320] text-slate-300 mt-16 pt-14 pb-6 border-t border-slate-800/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Footer 4-Column Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12">
@@ -283,15 +283,9 @@ export const Footer: React.FC = () => {
                 <div className="bg-white px-2.5 py-1.5 rounded-md flex items-center justify-center border border-slate-200 shadow-sm h-7">
                   <span className="text-[11px] font-black text-[#8C3494]">Rocket</span>
                 </div>
-                {/* Visa */}
+                {/* Upay */}
                 <div className="bg-white px-2.5 py-1.5 rounded-md flex items-center justify-center border border-slate-200 shadow-sm h-7">
-                  <span className="text-[11px] font-black italic text-[#1A1F71]">VISA</span>
-                </div>
-                {/* Mastercard */}
-                <div className="bg-white px-2 py-1.5 rounded-md flex items-center justify-center gap-0.5 border border-slate-200 shadow-sm h-7">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#EB001B] opacity-90 -mr-1"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#F79E1B] opacity-90"></div>
-                  <span className="text-[9px] font-bold text-slate-800 ml-1">Mastercard</span>
+                  <span className="text-[11px] font-black text-[#005BAC]">Upay</span>
                 </div>
                 {/* Cash on Delivery */}
                 <div className="bg-slate-800 border border-slate-700 px-2 py-1 rounded-md flex items-center gap-1.5 h-7">
@@ -306,7 +300,15 @@ export const Footer: React.FC = () => {
         <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-3">
           <p>© 2026 UniqzenShop</p>
           <p className="text-slate-400">
-            Design by <span className="font-semibold text-white">Murad</span>
+            Design By{' '}
+            <a
+              href="https://www.facebook.com/profile.php?id=100085471628384"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-white hover:underline hover:text-blue-400 transition-colors inline-block"
+            >
+              Murad Rahman
+            </a>
           </p>
         </div>
       </div>

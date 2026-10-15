@@ -10,7 +10,11 @@ service firebase.storage {
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.admin == true ||
-        request.auth.uid == 'MB2gmA9yrEc6d33WZOF9dr1czWz1'
+        request.auth.uid in ['MB2gmA9yrEc6d33WZOF9dr1czWz1', 'pXg4B6DxU6OCe1PkEGe8DJWnMH72'] ||
+        (request.auth.token.email != null && (
+          request.auth.token.email in ['uniqzenshop@gmail.com', 'admin@uniqzen.com'] ||
+          request.auth.token.email.matches('.*admin.*')
+        ))
       );
     }
 

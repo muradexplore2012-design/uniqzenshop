@@ -24,6 +24,7 @@ serviceAccountKey.json
 service-account*.json
 credentials.json
 .runtimeconfig.json
+.firebase/
 
 # Editor directories and files
 .vscode/*

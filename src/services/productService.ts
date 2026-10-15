@@ -272,8 +272,9 @@ export async function saveProduct(
 }
 
 
-export async function deleteProduct(productId: string, softDelete: boolean = true): Promise<void> {
+export async function deleteProduct(productId: string, softDelete: boolean = false): Promise<void> {
   if (!db) return;
+  productMemoryCache.delete(productId);
   if (softDelete) {
     await updateDoc(doc(db, COLLECTION_NAME, productId), {
       active: false,
@@ -294,7 +295,26 @@ export async function getFeaturedProducts(limitCount: number = 8): Promise<Produ
       limit(limitCount)
     );
     const snap = await getDocs(q);
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
+    let list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
+
+    // Fallback: If fewer than limitCount featured products, fill with active products so added products show on home page
+    if (list.length < limitCount) {
+      const fallbackQ = query(
+        collection(db, COLLECTION_NAME),
+        where('active', '==', true),
+        limit(limitCount)
+      );
+      const fallbackSnap = await getDocs(fallbackQ);
+      const fallbackList = fallbackSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
+      const existingIds = new Set(list.map((p) => p.id));
+      for (const p of fallbackList) {
+        if (!existingIds.has(p.id) && list.length < limitCount) {
+          list.push(p);
+          existingIds.add(p.id);
+        }
+      }
+    }
+
     cacheProducts(list);
     return list;
   } catch (e) {

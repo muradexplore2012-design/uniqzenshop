@@ -3,7 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { LayoutGrid, Store, Home, ShoppingCart, User } from 'lucide-react';
 import { useCart } from '../../lib/cartContext';
 
-export const MobileBottomNav: React.FC = () => {
+interface MobileBottomNavProps {
+  visible?: boolean;
+}
+
+export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ visible = true }) => {
   const location = useLocation();
   const { totalItemsCount } = useCart();
 
@@ -20,7 +24,9 @@ export const MobileBottomNav: React.FC = () => {
   return (
     <nav
       aria-label="Mobile Navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] rounded-t-2xl pb-[env(safe-area-inset-bottom)]"
+      className={`fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] rounded-t-2xl pb-[env(safe-area-inset-bottom)] transition-all duration-500 ease-in-out transform ${
+        visible ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0 pointer-events-none'
+      }`}
     >
       <div className="flex items-end justify-between px-3 sm:px-6 h-14 sm:h-16 relative">
         {/* 1. Menu Item (4-square grid icon) */}

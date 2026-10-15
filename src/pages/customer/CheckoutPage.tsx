@@ -7,6 +7,8 @@ import {
   AlertCircle,
   Loader2,
   Lock,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { SEO } from '../../components/common/SEO';
 import { useCart } from '../../lib/cartContext';
@@ -14,6 +16,7 @@ import { useAuth } from '../../lib/authContext';
 import { createOrder } from '../../services/orderService';
 import { getStoreSettings } from '../../services/settingsService';
 import { DeliveryZone } from '../../types/settings';
+import { PaymentMethod } from '../../types/order';
 import {
   formatCurrency,
   BANGLADESH_DIVISIONS,
@@ -50,6 +53,18 @@ export const CheckoutPage: React.FC = () => {
   const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Payment State
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
+  const [senderNumber, setSenderNumber] = useState('');
+  const [trxId, setTrxId] = useState('');
+  const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
+
+  const handleCopyNumber = (num: string) => {
+    navigator.clipboard.writeText(num);
+    setCopiedNumber(num);
+    setTimeout(() => setCopiedNumber(null), 2500);
+  };
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -106,6 +121,23 @@ export const CheckoutPage: React.FC = () => {
       return;
     }
 
+    // Payment validation
+    if (paymentMethod === 'bkash' || paymentMethod === 'nagad' || paymentMethod === 'upay') {
+      const methodName = paymentMethod === 'bkash' ? 'bKash' : paymentMethod === 'nagad' ? 'Nagad' : 'Upay';
+      if (!senderNumber.trim()) {
+        setErrorMsg(`Please enter your ${methodName} sender phone number.`);
+        return;
+      }
+      if (!isValidBDPhone(senderNumber.trim())) {
+        setErrorMsg(`Please enter a valid 11-digit ${methodName} sender phone number (e.g. 01XXXXXXXXX).`);
+        return;
+      }
+      if (!trxId.trim()) {
+        setErrorMsg(`Please enter your ${methodName} Transaction ID (TrxID).`);
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
@@ -134,12 +166,22 @@ export const CheckoutPage: React.FC = () => {
         subtotal: item.unitPrice * item.quantity,
       }));
 
+      const paymentDetails =
+        paymentMethod !== 'cod'
+          ? {
+              senderNumber: senderNumber.trim() || undefined,
+              transactionId: trxId.trim() || undefined,
+            }
+          : undefined;
+
       const res = await createOrder(
         orderPayload,
         cartOrderItems,
         deliveryCharge,
         appliedCoupon?.code,
-        selectedZone?.name
+        selectedZone?.name,
+        paymentMethod,
+        paymentDetails
       );
 
       if (res.success && res.orderNumber) {
@@ -163,7 +205,7 @@ export const CheckoutPage: React.FC = () => {
         Secure Checkout
       </h1>
       <p className="text-xs sm:text-sm text-slate-500 mb-8">
-        Please enter your shipping address. You will pay cash when the package arrives.
+        Please enter your delivery address and choose your preferred payment method below.
       </p>
 
       {errorMsg && (
@@ -311,26 +353,249 @@ export const CheckoutPage: React.FC = () => {
             </div>
 
             {/* Payment Method Section */}
-            <div className="bg-white rounded-2xl border border-brand-border p-6 shadow-subtle space-y-3">
-              <h2 className="text-base font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
-                <Lock className="w-4 h-4 text-brand-secondary" />
-                <span>Payment Method</span>
-              </h2>
+            <div className="bg-white rounded-2xl border border-brand-border p-6 shadow-subtle space-y-4">
+              <div className="pb-2 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-brand-secondary" />
+                  <span>Payment Method</span>
+                </h2>
+                <span className="text-xs text-slate-500 font-medium">Select one</span>
+              </div>
 
-              <div className="p-4 rounded-xl border-2 border-brand-primary bg-slate-50 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-4 h-4 rounded-full border-4 border-brand-primary bg-white" />
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">Cash on Delivery (COD)</h4>
-                    <p className="text-xs text-slate-500">
-                      Pay with cash when your package is delivered to your doorstep.
+              {/* Payment Methods Options List */}
+              <div className="space-y-2.5">
+                {/* 1. Cash on Delivery (COD) */}
+                <div
+                  onClick={() => setPaymentMethod('cod')}
+                  className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                    paymentMethod === 'cod'
+                      ? 'border-brand-primary bg-slate-50/80 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        paymentMethod === 'cod'
+                          ? 'border-brand-primary'
+                          : 'border-slate-300'
+                      }`}
+                    >
+                      {paymentMethod === 'cod' && (
+                        <div className="w-2 h-2 rounded-full bg-brand-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-slate-900">Cash on Delivery (COD)</h4>
+                        <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          💵 COD
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Pay with cash when your package is delivered to your doorstep.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 bg-white px-2.5 py-1 rounded-md border border-slate-200">
+                    ৳ BDT
+                  </span>
+                </div>
+
+                {/* 2. bKash Personal */}
+                <div
+                  onClick={() => setPaymentMethod('bkash')}
+                  className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                    paymentMethod === 'bkash'
+                      ? 'border-[#E2136E] bg-pink-50/40 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        paymentMethod === 'bkash'
+                          ? 'border-[#E2136E]'
+                          : 'border-slate-300'
+                      }`}
+                    >
+                      {paymentMethod === 'bkash' && (
+                        <div className="w-2 h-2 rounded-full bg-[#E2136E]" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded bg-[#E2136E] text-white font-black text-xs">
+                          bKash
+                        </span>
+                        <h4 className="text-sm font-bold text-slate-900">bKash Personal</h4>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Send Money to Personal: <strong className="font-mono text-slate-800">01768534545</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-[#E2136E] bg-pink-50 px-2 py-1 rounded-md border border-pink-200 font-mono">
+                    01768534545
+                  </span>
+                </div>
+
+                {/* 3. Nagad Personal */}
+                <div
+                  onClick={() => setPaymentMethod('nagad')}
+                  className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                    paymentMethod === 'nagad'
+                      ? 'border-[#F7941D] bg-orange-50/40 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        paymentMethod === 'nagad'
+                          ? 'border-[#F7941D]'
+                          : 'border-slate-300'
+                      }`}
+                    >
+                      {paymentMethod === 'nagad' && (
+                        <div className="w-2 h-2 rounded-full bg-[#F7941D]" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded bg-[#F7941D] text-white font-black text-xs">
+                          Nagad
+                        </span>
+                        <h4 className="text-sm font-bold text-slate-900">Nagad Personal</h4>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Send Money to Personal: <strong className="font-mono text-slate-800">01768534545</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-[#F7941D] bg-orange-50 px-2 py-1 rounded-md border border-orange-200 font-mono">
+                    01768534545
+                  </span>
+                </div>
+
+                {/* 4. Upay Personal */}
+                <div
+                  onClick={() => setPaymentMethod('upay')}
+                  className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                    paymentMethod === 'upay'
+                      ? 'border-[#005BAC] bg-sky-50/40 shadow-xs'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        paymentMethod === 'upay'
+                          ? 'border-[#005BAC]'
+                          : 'border-slate-300'
+                      }`}
+                    >
+                      {paymentMethod === 'upay' && (
+                        <div className="w-2 h-2 rounded-full bg-[#005BAC]" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded bg-[#005BAC] text-[#FFD200] font-black text-xs">
+                          Upay
+                        </span>
+                        <h4 className="text-sm font-bold text-slate-900">Upay Personal</h4>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Send Money to Personal: <strong className="font-mono text-slate-800">01329913500</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-[#005BAC] bg-sky-50 px-2 py-1 rounded-md border border-sky-200 font-mono">
+                    01329913500
+                  </span>
+                </div>
+              </div>
+
+              {/* Dynamic Payment Instruction & Input Box */}
+              {(paymentMethod === 'bkash' || paymentMethod === 'nagad' || paymentMethod === 'upay') && (
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/60 border border-slate-200 space-y-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                        {paymentMethod === 'bkash'
+                          ? 'bKash Personal Number'
+                          : paymentMethod === 'nagad'
+                          ? 'Nagad Personal Number'
+                          : 'Upay Personal Number'}
+                      </span>
+                      <span className="text-lg font-black text-slate-900 font-mono tracking-wider">
+                        {paymentMethod === 'upay' ? '01329913500' : '01768534545'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyNumber(paymentMethod === 'upay' ? '01329913500' : '01768534545')}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition-all shadow-xs"
+                    >
+                      {copiedNumber === (paymentMethod === 'upay' ? '01329913500' : '01768534545') ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy Number</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-slate-600 space-y-1 bg-white/60 p-3 rounded-xl border border-slate-200/60 leading-relaxed">
+                    <p className="font-semibold text-slate-800">পেমেন্ট নির্দেশিকা (Payment Instructions):</p>
+                    <p>
+                      ১. আপনার <strong>{paymentMethod === 'bkash' ? 'bKash' : paymentMethod === 'nagad' ? 'Nagad' : 'Upay'}</strong> অ্যাপে গিয়ে <strong>Send Money</strong> অপশন সিলেক্ট করুন।
+                    </p>
+                    <p>
+                      ২. প্রাপক হিসেবে উপরের পার্সোনাল নম্বরটিতে সর্বমোট <strong>{formatCurrency(grandTotal)}</strong> টাকা পাঠান।
+                    </p>
+                    <p>
+                      ৩. টাকা পাঠানোর পর নিচের ফর্মে আপনার সেন্ডার মোবাইল নম্বর এবং ফিরতি মেসেজের <strong>TrxID</strong> লিখে অর্ডার সম্পন্ন করুন।
                     </p>
                   </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Your {paymentMethod === 'bkash' ? 'bKash' : paymentMethod === 'nagad' ? 'Nagad' : 'Upay'} Number (Sender) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="01XXXXXXXXX"
+                        value={senderNumber}
+                        onChange={(e) => setSenderNumber(e.target.value)}
+                        className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-primary outline-none bg-white font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Transaction ID (TrxID) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. BL9A8B7C6D"
+                        value={trxId}
+                        onChange={(e) => setTrxId(e.target.value)}
+                        className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-primary outline-none bg-white font-mono uppercase"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <span className="text-xs font-bold text-slate-900 bg-white px-2.5 py-1 rounded-md border border-slate-200">
-                  ৳ BDT
-                </span>
-              </div>
+              )}
+
             </div>
           </div>
 
@@ -399,13 +664,18 @@ export const CheckoutPage: React.FC = () => {
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                     <span>Confirming Order...</span>
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Confirm Order (Cash on Delivery)</span>
+                    <CheckCircle className="w-5 h-5" />
+                    <span>
+                      Confirm Order{' '}
+                      {paymentMethod === 'cod'
+                        ? '(Cash on Delivery)'
+                        : `(${paymentMethod.toUpperCase()})`}
+                    </span>
                   </>
                 )}
               </button>

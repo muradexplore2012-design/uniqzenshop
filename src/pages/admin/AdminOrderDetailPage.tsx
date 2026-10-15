@@ -205,6 +205,40 @@ export const AdminOrderDetailPage: React.FC = () => {
                 <strong>Customer Note:</strong> {order.customer.deliveryNotes}
               </div>
             )}
+
+            {/* Payment Information */}
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 uppercase">
+                  Payment Method: {order.paymentMethod === 'cod' ? 'Cash on Delivery (COD)' : order.paymentMethod.toUpperCase()}
+                </span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                  order.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {order.paymentStatus}
+                </span>
+              </div>
+              {order.paymentDetails?.senderNumber && (
+                <p className="text-slate-600">
+                  Sender Phone: <strong className="font-mono text-slate-900">{order.paymentDetails.senderNumber}</strong>
+                </p>
+              )}
+              {order.paymentDetails?.transactionId && (
+                <p className="text-slate-600">
+                  Transaction ID (TrxID): <strong className="font-mono text-brand-primary">{order.paymentDetails.transactionId}</strong>
+                </p>
+              )}
+              {order.paymentDetails?.accountHolderName && (
+                <p className="text-slate-600">
+                  Account / Depositor Name: <strong className="text-slate-900">{order.paymentDetails.accountHolderName}</strong>
+                </p>
+              )}
+              {order.paymentDetails?.reference && (
+                <p className="text-slate-600">
+                  Reference: <strong className="font-mono text-slate-900">{order.paymentDetails.reference}</strong>
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Items Table */}
@@ -371,7 +405,12 @@ export const AdminOrderDetailPage: React.FC = () => {
           <div className="text-right">
             <p className="font-mono font-bold text-base">Invoice #{order.orderNumber}</p>
             <p className="text-xs">Date: {formatDate(order.createdAt)}</p>
-            <p className="text-xs font-bold uppercase mt-1">Payment: Cash on Delivery</p>
+            <p className="text-xs font-bold uppercase mt-1">
+              Payment: {order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod.toUpperCase()}
+            </p>
+            {order.paymentDetails?.transactionId && (
+              <p className="text-[11px] font-mono">TrxID: {order.paymentDetails.transactionId}</p>
+            )}
           </div>
         </div>
 

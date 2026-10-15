@@ -10,7 +10,14 @@ export type OrderStatus =
   | 'refunded';
 
 export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
-export type PaymentMethod = 'cod' | 'online';
+export type PaymentMethod = 'cod' | 'bkash' | 'nagad' | 'upay' | 'visa' | 'ucb';
+
+export interface PaymentDetails {
+  senderNumber?: string;
+  transactionId?: string;
+  accountHolderName?: string;
+  reference?: string;
+}
 
 export interface OrderItem {
   productId: string;
@@ -57,6 +64,7 @@ export interface Order {
   deliveryCharge: number;
   total: number;
   paymentMethod: PaymentMethod;
+  paymentDetails?: PaymentDetails;
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
   statusHistory: OrderStatusHistoryItem[];
