@@ -6,7 +6,7 @@ import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDHPo2Hy9zTsA46jTjHXpmWxTeYxA9V5Ac",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "uniqzenshop-8ee15.firebaseapp.com",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "uniqzenshop-8ee15.web.app",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "uniqzenshop-8ee15",
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "uniqzenshop-8ee15.firebasestorage.app",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "963957373578",
