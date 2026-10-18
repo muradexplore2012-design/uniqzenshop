@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Navigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
@@ -32,16 +32,15 @@ export const AdminLayout: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
         <div className="flex flex-col items-center space-y-3">
           <div className="w-8 h-8 border-4 border-brand-secondary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-400">Verifying administrative access...</p>
+          <p className="text-sm text-slate-400">Loading admin panel...</p>
         </div>
       </div>
     );
   }
 
-  // If not logged in at all, redirect to admin login
+  // If not logged in at all, redirect cleanly to admin login
   if (!currentUser) {
-    navigate('/admin/login');
-    return null;
+    return <Navigate to="/admin/login" replace />;
   }
 
   // If authenticated but not authorized administrator

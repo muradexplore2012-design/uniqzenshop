@@ -7,6 +7,7 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  sendPasswordResetEmail,
   GoogleAuthProvider,
   signOut as fbSignOut,
   updateProfile,
@@ -23,6 +24,7 @@ interface AuthContextType {
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string, name: string, phone?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -35,6 +37,7 @@ const AuthContext = createContext<AuthContextType>({
   loginWithEmail: async () => {},
   registerWithEmail: async () => {},
   loginWithGoogle: async () => {},
+  resetPassword: async () => {},
   logout: async () => {},
   refreshProfile: async () => {},
 });
@@ -73,8 +76,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userEmail = (user.email || '').toLowerCase();
       const isStoreAdminEmail =
         userEmail === 'uniqzenshop@gmail.com' ||
+        userEmail === 'muradexplore2012@gmail.com' ||
         userEmail === 'admin@uniqzen.com' ||
-        userEmail.includes('admin');
+        userEmail.includes('admin') ||
+        userEmail.includes('murad');
 
       // Check if user is admin via UID or custom claims or user doc role or verified store admin email
       const isConfiguredAdmin =
@@ -103,8 +108,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       console.error('Error fetching user profile:', err);
-      // Fallback check UID directly even if firestore read fails
-      if (configuredAdminUids.includes(user.uid)) {
+      // Fallback check email/UID directly even if firestore read fails
+      const userEmail = (user.email || '').toLowerCase();
+      if (
+        configuredAdminUids.includes(user.uid) ||
+        userEmail === 'uniqzenshop@gmail.com' ||
+        userEmail === 'muradexplore2012@gmail.com' ||
+        userEmail.includes('admin') ||
+        userEmail.includes('murad')
+      ) {
         setIsAdmin(true);
       }
     }
@@ -121,6 +133,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .then(async (result) => {
         if (result?.user) {
           setCurrentUser(result.user);
+          const email = (result.user.email || '').toLowerCase();
+          if (
+            configuredAdminUids.includes(result.user.uid) ||
+            email === 'uniqzenshop@gmail.com' ||
+            email === 'muradexplore2012@gmail.com' ||
+            email.includes('admin') ||
+            email.includes('murad')
+          ) {
+            setIsAdmin(true);
+          }
           await fetchUserProfile(result.user);
         }
       })
@@ -128,15 +150,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Redirect sign-in error:', err);
       });
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       if (user) {
-        await fetchUserProfile(user);
+        // Immediate synchronous admin check to eliminate loading delays and access denied race conditions
+        const email = (user.email || '').toLowerCase();
+        const isAdminImmediate =
+          configuredAdminUids.includes(user.uid) ||
+          email === 'uniqzenshop@gmail.com' ||
+          email === 'muradexplore2012@gmail.com' ||
+          email === 'admin@uniqzen.com' ||
+          email.includes('admin') ||
+          email.includes('murad');
+        
+        setIsAdmin(isAdminImmediate);
+        setLoading(false); // Unblock UI immediately!
+        fetchUserProfile(user); // Sync Firestore profile in background
       } else {
         setUserProfile(null);
         setIsAdmin(false);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -196,6 +230,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resetPassword = async (email: string) => {
+    if (!auth) throw new Error('Firebase Auth is not initialized');
+    await sendPasswordResetEmail(auth, email);
+  };
+
   const logout = async () => {
     if (!auth) return;
     await fbSignOut(auth);
@@ -220,6 +259,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginWithEmail,
         registerWithEmail,
         loginWithGoogle,
+        resetPassword,
         logout,
         refreshProfile,
       }}
@@ -228,3 +268,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
+

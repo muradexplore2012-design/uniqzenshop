@@ -24,7 +24,7 @@ import { Order } from '../../types/order';
 import { formatCurrency, formatDate } from '../../lib/utils';
 
 export const AccountPage: React.FC = () => {
-  const { currentUser, userProfile, loginWithEmail, registerWithEmail, loginWithGoogle, logout } = useAuth();
+  const { currentUser, userProfile, loginWithEmail, registerWithEmail, loginWithGoogle, resetPassword, logout } = useAuth();
   const { wishlistIds } = useWishlist();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export const AccountPage: React.FC = () => {
   );
 
   // Auth form states (for unauthenticated users)
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -43,6 +43,7 @@ export const AccountPage: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
 
   // Orders state
   const [orders, setOrders] = useState<Order[]>([]);
@@ -65,12 +66,24 @@ export const AccountPage: React.FC = () => {
 
     try {
       if (authMode === 'login') {
-        await loginWithEmail(email, password);
-      } else {
-        await registerWithEmail(email, password, fullName, phone);
+        await loginWithEmail(email.trim(), password);
+      } else if (authMode === 'register') {
+        await registerWithEmail(email.trim(), password, fullName.trim(), phone.trim());
+      } else if (authMode === 'forgot') {
+        await resetPassword(email.trim());
+        setAuthSuccess('Password reset link sent to your email. Please check your inbox!');
+        setAuthLoading(false);
+        return;
       }
     } catch (err: any) {
-      setAuthError(err.message || 'Authentication failed. Please check credentials.');
+      console.error('Customer Auth Error:', err);
+      let msg = err.message || 'Authentication failed. Please check credentials.';
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        msg = 'Invalid email or password. If you don\'t have an account, click "Register" above.';
+      } else if (err.code === 'auth/email-already-in-use') {
+        msg = 'An account with this email already exists. Please Sign In.';
+      }
+      setAuthError(msg);
     } finally {
       setAuthLoading(false);
     }
@@ -78,6 +91,7 @@ export const AccountPage: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     setAuthError('');
+    setAuthSuccess('');
     setGoogleLoading(true);
     try {
       await loginWithGoogle();
@@ -100,47 +114,60 @@ export const AccountPage: React.FC = () => {
           <div className="text-center space-y-2">
             <img src="/logo.png" alt="Uniqzen Shop" className="h-12 mx-auto object-contain" />
             <h1 className="text-xl font-extrabold text-slate-900">
-              {authMode === 'login' ? 'Welcome Back' : 'Create an Account'}
+              {authMode === 'login' && 'Welcome Back'}
+              {authMode === 'register' && 'Create an Account'}
+              {authMode === 'forgot' && 'Reset Your Password'}
             </h1>
             <p className="text-xs text-slate-500">
-              {authMode === 'login'
-                ? 'Sign in to access your orders and account settings'
-                : 'Register to manage your gadget orders and save wishlist'}
+              {authMode === 'login' && 'Sign in to access your orders and account settings'}
+              {authMode === 'register' && 'Register to manage your gadget orders and save wishlist'}
+              {authMode === 'forgot' && 'Enter your email to receive a password reset link'}
             </p>
           </div>
 
           {/* Toggle Tabs */}
-          <div className="flex rounded-xl bg-slate-100 p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode('login');
-                setAuthError('');
-              }}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-                authMode === 'login' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode('register');
-                setAuthError('');
-              }}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-                authMode === 'register' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Register
-            </button>
-          </div>
+          {authMode !== 'forgot' && (
+            <div className="flex rounded-xl bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('login');
+                  setAuthError('');
+                  setAuthSuccess('');
+                }}
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  authMode === 'login' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('register');
+                  setAuthError('');
+                  setAuthSuccess('');
+                }}
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  authMode === 'register' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Register
+              </button>
+            </div>
+          )}
 
           {authError && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>{authError}</span>
+            </div>
+          )}
+
+          {authSuccess && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+              <span>{authSuccess}</span>
             </div>
           )}
 
@@ -183,18 +210,35 @@ export const AccountPage: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-primary outline-none"
-              />
-            </div>
+            {authMode !== 'forgot' && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">Password</label>
+                  {authMode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('forgot');
+                        setAuthError('');
+                        setAuthSuccess('');
+                      }}
+                      className="text-[11px] text-brand-primary font-medium hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-primary outline-none"
+                />
+              </div>
+            )}
 
             <button
               type="submit"
@@ -207,10 +251,30 @@ export const AccountPage: React.FC = () => {
                   <span>Please wait...</span>
                 </>
               ) : (
-                <span>{authMode === 'login' ? 'Sign In' : 'Create Account'}</span>
+                <span>
+                  {authMode === 'login' && 'Sign In'}
+                  {authMode === 'register' && 'Create Account'}
+                  {authMode === 'forgot' && 'Send Password Reset Link'}
+                </span>
               )}
             </button>
           </form>
+
+          {authMode === 'forgot' && (
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('login');
+                  setAuthError('');
+                  setAuthSuccess('');
+                }}
+                className="text-xs text-brand-primary font-semibold hover:underline"
+              >
+                ← Back to Sign In
+              </button>
+            </div>
+          )}
 
           {/* Divider */}
           <div className="relative my-4">

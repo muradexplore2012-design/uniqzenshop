@@ -13,8 +13,9 @@ service cloud.firestore {
         request.auth.token.admin == true ||
         request.auth.uid in ['MB2gmA9yrEc6d33WZOF9dr1czWz1', 'pXg4B6DxU6OCe1PkEGe8DJWnMH72'] ||
         (request.auth.token.email != null && (
-          request.auth.token.email in ['uniqzenshop@gmail.com', 'admin@uniqzen.com'] ||
-          request.auth.token.email.matches('.*admin.*')
+          request.auth.token.email in ['uniqzenshop@gmail.com', 'admin@uniqzen.com', 'muradexplore2012@gmail.com'] ||
+          request.auth.token.email.matches('.*admin.*') ||
+          request.auth.token.email.matches('.*murad.*')
         )) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
