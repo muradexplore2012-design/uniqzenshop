@@ -5,6 +5,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut as fbSignOut,
   updateProfile,
@@ -114,6 +116,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    // Check if returning from a Google redirect sign-in
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user) {
+          setCurrentUser(result.user);
+          await fetchUserProfile(result.user);
+        }
+      })
+      .catch((err) => {
+        console.error('Redirect sign-in error:', err);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
@@ -160,9 +174,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!auth) throw new Error('Firebase Auth is not initialized');
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    const res = await signInWithPopup(auth, provider);
-    if (res.user) {
-      await fetchUserProfile(res.user);
+    try {
+      const res = await signInWithPopup(auth, provider);
+      if (res?.user) {
+        setCurrentUser(res.user);
+        await fetchUserProfile(res.user);
+      }
+    } catch (popupErr: any) {
+      // If popup was blocked or closed due to cross-origin third-party cookie restrictions, use redirect!
+      if (
+        popupErr.code === 'auth/popup-blocked' ||
+        popupErr.code === 'auth/popup-closed-by-user' ||
+        popupErr.code === 'auth/cancelled-popup-request' ||
+        popupErr.code === 'auth/internal-error'
+      ) {
+        console.warn('Popup login interrupted, falling back to signInWithRedirect...', popupErr);
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+      throw popupErr;
     }
   };
 
