@@ -10,6 +10,40 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        function removeNetlifyWidgets() {
+          var selectors = [
+            'iframe[src*="netlify" i]',
+            'iframe[src*="netlify-badge" i]',
+            'iframe[title*="Netlify" i]',
+            'iframe[id*="netlify" i]',
+            '[data-netlify-badge]',
+            '[data-netlify-drawer]',
+            '#netlify-drawer',
+            'netlify-drawer',
+            '.netlify-badge',
+            '#netlify-badge',
+            '.netlify-feedback-badge'
+          ];
+          var elements = document.querySelectorAll(selectors.join(','));
+          elements.forEach(function(el) {
+            el.remove();
+          });
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', removeNetlifyWidgets);
+        } else {
+          removeNetlifyWidgets();
+        }
+        if (window.MutationObserver) {
+          var observer = new MutationObserver(function() {
+            removeNetlifyWidgets();
+          });
+          observer.observe(document.documentElement, { childList: true, subtree: true });
+        }
+      })();
+    </script>
   </head>
   <body class="bg-brand-background text-brand-foreground antialiased min-h-screen">
     <div id="root"></div>
