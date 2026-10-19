@@ -25,7 +25,7 @@ import { formatCurrency, formatDate } from '../../lib/utils';
 import { GoogleSignInButton } from '../../components/common/GoogleSignInButton';
 
 export const AccountPage: React.FC = () => {
-  const { currentUser, userProfile, loginWithEmail, registerWithEmail, loginWithGoogle, loginWithGoogleRedirect, resetPassword, logout } = useAuth();
+  const { currentUser, loading, userProfile, loginWithEmail, registerWithEmail, loginWithGoogle, loginWithGoogleRedirect, resetPassword, logout } = useAuth();
   const { wishlistIds } = useWishlist();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -106,6 +106,16 @@ export const AccountPage: React.FC = () => {
       setAuthError(msg);
     }
   };
+
+  // While auth state is initializing or checking credentials: show smooth spinner
+  if (loading) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+        <p className="text-xs text-slate-500 font-medium">Checking authentication...</p>
+      </div>
+    );
+  }
 
   // If user is not logged in: display login / register portal
   if (!currentUser) {
@@ -311,8 +321,31 @@ export const AccountPage: React.FC = () => {
 
           {/* Native Ultra-Fast Google Sign-In */}
           <GoogleSignInButton
+            onSuccess={() => {
+              navigate('/account');
+            }}
             onError={(err) => setAuthError(err)}
           />
+
+          <div className="text-center pt-1">
+            <button
+              type="button"
+              disabled={googleLoading}
+              onClick={async () => {
+                setAuthError('');
+                setGoogleLoading(true);
+                try {
+                  await loginWithGoogleRedirect();
+                } catch (e: any) {
+                  setAuthError(e.message || 'Direct redirect failed');
+                  setGoogleLoading(false);
+                }
+              }}
+              className="text-xs text-slate-500 hover:text-slate-800 underline font-medium transition-colors"
+            >
+              পপআপে সমস্যা হচ্ছে? সরাসরি Google Redirect দিয়ে লগইন করুন
+            </button>
+          </div>
 
           <div className="pt-2 text-center text-xs text-slate-500">
             <Link to="/track-order" className="hover:underline text-brand-primary">

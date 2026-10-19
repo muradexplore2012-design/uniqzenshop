@@ -30,6 +30,8 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       let msg = err.message || 'Google Sign-In failed. Please try again.';
       if (err.code === 'auth/unauthorized-domain') {
         msg = `Domain (${window.location.hostname}) is not authorized in Firebase Console.`;
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        msg = 'Google sign-in popup was closed before completion. Please try again or use direct redirect below.';
       }
       if (onError) {
         onError(msg);

@@ -24,7 +24,7 @@ interface AuthContextType {
   loading: boolean;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string, name: string, phone?: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: () => Promise<User | null>;
   loginWithGoogleRedirect: () => Promise<void>;
   loginWithGoogleCredential: (idToken: string) => Promise<User | null>;
   resetPassword: (email: string) => Promise<void>;
@@ -39,7 +39,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   loginWithEmail: async () => {},
   registerWithEmail: async () => {},
-  loginWithGoogle: async () => {},
+  loginWithGoogle: async () => null,
   loginWithGoogleRedirect: async () => {},
   loginWithGoogleCredential: async () => null,
   resetPassword: async () => {},
@@ -209,7 +209,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (): Promise<User | null> => {
     if (!auth) throw new Error('Firebase Auth is not initialized');
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
@@ -231,20 +231,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return res.user;
       }
     } catch (popupErr: any) {
+      console.warn('Firebase popup notice:', popupErr.code, popupErr.message);
       if (
-        popupErr.code === 'auth/popup-closed-by-user' ||
+        popupErr.code === 'auth/popup-blocked' ||
         popupErr.code === 'auth/cancelled-popup-request'
       ) {
-        return null;
-      }
-      if (popupErr.code === 'auth/popup-blocked') {
-        console.warn('Popup blocked, falling back to redirect...');
         await signInWithRedirect(auth, provider);
         return null;
       }
       throw popupErr;
     }
-    return null;
+    return auth.currentUser || null;
   };
 
   const loginWithGoogleCredential = async (idToken: string) => {
@@ -269,7 +266,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   };
 
-  const loginWithGoogleRedirect = loginWithGoogle;
+  const loginWithGoogleRedirect = async () => {
+    if (!auth) throw new Error('Firebase Auth is not initialized');
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    await signInWithRedirect(auth, provider);
+  };
 
   const resetPassword = async (email: string) => {
     if (!auth) throw new Error('Firebase Auth is not initialized');

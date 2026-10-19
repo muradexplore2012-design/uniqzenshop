@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
 import { Lock, Mail, ShieldCheck, AlertCircle, Loader2, KeyRound, CheckCircle2 } from 'lucide-react';
 import { SEO } from '../../components/common/SEO';
 import { useAuth } from '../../lib/authContext';
 import { GoogleSignInButton } from '../../components/common/GoogleSignInButton';
 
 export const AdminLoginPage: React.FC = () => {
-  const { currentUser, isAdmin, loginWithEmail, registerWithEmail, loginWithGoogle, loginWithGoogleRedirect, resetPassword, logout } = useAuth();
+  const { currentUser, isAdmin, loading: authLoading, loginWithEmail, registerWithEmail, loginWithGoogle, loginWithGoogleRedirect, resetPassword, logout } = useAuth();
+  const navigate = useNavigate();
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [email, setEmail] = useState('');
@@ -16,6 +17,15 @@ export const AdminLoginPage: React.FC = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // If still checking session persistence, show clean spinner
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-secondary" />
+      </div>
+    );
+  }
 
   // If already logged in and confirmed admin, redirect directly
   if (currentUser && isAdmin) {
@@ -288,8 +298,31 @@ export const AdminLoginPage: React.FC = () => {
         {/* Native Ultra-Fast Google Sign-In */}
         <GoogleSignInButton
           theme="dark"
+          onSuccess={() => {
+            navigate('/admin');
+          }}
           onError={(err) => setErrorMsg(err)}
         />
+
+        <div className="text-center pt-1">
+          <button
+            type="button"
+            disabled={googleLoading}
+            onClick={async () => {
+              setErrorMsg('');
+              setGoogleLoading(true);
+              try {
+                await loginWithGoogleRedirect();
+              } catch (e: any) {
+                setErrorMsg(e.message || 'Direct redirect failed');
+                setGoogleLoading(false);
+              }
+            }}
+            className="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium transition-colors"
+          >
+            পপআপে সমস্যা হলে সরাসরি Google Redirect দিয়ে অ্যাডমিন লগইন করুন
+          </button>
+        </div>
 
         <div className="pt-2 text-center">
           <Link to="/" className="text-xs text-slate-400 hover:text-white transition-colors">

@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
@@ -41,6 +41,11 @@ if (appInstance) {
 
 export const app = appInstance;
 export const auth = appInstance ? getAuth(appInstance) : (null as any);
+if (auth) {
+  setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.warn('Firebase auth persistence notice:', err);
+  });
+}
 export const db = firestoreDb;
 export const storage = appInstance ? getStorage(appInstance) : (null as any);
 export const functions = appInstance ? getFunctions(appInstance) : (null as any);
