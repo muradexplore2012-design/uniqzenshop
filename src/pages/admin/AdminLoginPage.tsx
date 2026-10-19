@@ -32,10 +32,10 @@ export const AdminLoginPage: React.FC = () => {
         await loginWithEmail(email.trim(), password);
       } else if (mode === 'register') {
         await registerWithEmail(email.trim(), password, fullName.trim() || 'Store Administrator');
-        setSuccessMsg('Admin account created successfully!');
+        setSuccessMsg('Admin account created successfully! You are now signed in.');
       } else if (mode === 'forgot') {
         await resetPassword(email.trim());
-        setSuccessMsg('Password reset link sent to your email. Please check your inbox!');
+        setSuccessMsg('পাসওয়ার্ড রিসেট লিংকটি আপনার ইমেইলে পাঠিয়ে দেওয়া হয়েছে! আপনার Gmail Inbox (অথবা Spam ফোল্ডার) চেক করে নতুন পাসওয়ার্ড সেট করে নিন।');
         setLoading(false);
         return;
       }
@@ -82,11 +82,15 @@ export const AdminLoginPage: React.FC = () => {
             alt="Uniqzen Shop"
             className="h-12 mx-auto object-contain bg-white p-1 rounded-xl shadow-xs"
           />
-          <h1 className="text-xl font-bold text-white tracking-tight">Staff Administration Portal</h1>
+          <h1 className="text-xl font-bold text-white tracking-tight">
+            {mode === 'login' && 'Staff Administration Portal'}
+            {mode === 'register' && 'Create Admin Account'}
+            {mode === 'forgot' && 'Reset Admin Password'}
+          </h1>
           <p className="text-xs text-slate-400">
             {mode === 'login' && 'Sign in with administrator credentials to manage Uniqzen Shop.'}
             {mode === 'register' && 'Create your store administrator account with your store email.'}
-            {mode === 'forgot' && 'Enter your email to receive a password reset link.'}
+            {mode === 'forgot' && 'আপনার অ্যাডমিন ইমেইলটি লিখে বাটনে চাপ দিন। আপনার ইনবক্সে পাসওয়ার্ড রিসেট লিংক চলে যাবে।'}
           </p>
         </div>
 
@@ -171,9 +175,9 @@ export const AdminLoginPage: React.FC = () => {
                       setErrorMsg('');
                       setSuccessMsg('');
                     }}
-                    className="text-[11px] text-brand-secondary hover:underline"
+                    className="text-[11px] text-brand-secondary hover:underline font-medium"
                   >
-                    Forgot Password?
+                    Forgot Password? (পাসওয়ার্ড ভুলে গেছেন?)
                   </button>
                 )}
               </div>
@@ -206,7 +210,7 @@ export const AdminLoginPage: React.FC = () => {
             ) : mode === 'register' ? (
               <span>Create Administrator Account</span>
             ) : (
-              <span>Send Password Reset Link</span>
+              <span>Send Password Reset Link (রিসেট লিংক পাঠান)</span>
             )}
           </button>
         </form>
