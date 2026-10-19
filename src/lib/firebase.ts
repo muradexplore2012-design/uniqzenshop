@@ -4,9 +4,16 @@ import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
 
+const getAuthDomain = () => {
+  if (typeof window !== 'undefined' && window.location.hostname.includes('netlify.app')) {
+    return window.location.hostname;
+  }
+  return import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "uniqzenshop.netlify.app";
+};
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDHPo2Hy9zTsA46jTjHXpmWxTeYxA9V5Ac",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "uniqzenshop-8ee15.firebaseapp.com",
+  authDomain: getAuthDomain(),
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "uniqzenshop-8ee15",
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "uniqzenshop-8ee15.firebasestorage.app",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "963957373578",
