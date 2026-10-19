@@ -24,6 +24,7 @@ interface AuthContextType {
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string, name: string, phone?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  loginWithGoogleRedirect: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -37,6 +38,7 @@ const AuthContext = createContext<AuthContextType>({
   loginWithEmail: async () => {},
   registerWithEmail: async () => {},
   loginWithGoogle: async () => {},
+  loginWithGoogleRedirect: async () => {},
   resetPassword: async () => {},
   logout: async () => {},
   refreshProfile: async () => {},
@@ -209,14 +211,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    // 25-second safety timer so the UI NEVER hangs indefinitely
+    // 90-second safety timer so users have ample time for 2FA/account picker
     let timerId: any;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timerId = setTimeout(() => {
         const timeoutErr: any = new Error('Google Sign-In timed out. Please try again or check browser popup settings.');
         timeoutErr.code = 'auth/timeout';
         reject(timeoutErr);
-      }, 25000);
+      }, 90000);
     });
 
     try {
@@ -267,6 +269,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogleRedirect = async () => {
+    if (!auth) throw new Error('Firebase Auth is not initialized');
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    await signInWithRedirect(auth, provider);
+  };
+
   const resetPassword = async (email: string) => {
     if (!auth) throw new Error('Firebase Auth is not initialized');
     await sendPasswordResetEmail(auth, email);
@@ -296,6 +305,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginWithEmail,
         registerWithEmail,
         loginWithGoogle,
+        loginWithGoogleRedirect,
         resetPassword,
         logout,
         refreshProfile,

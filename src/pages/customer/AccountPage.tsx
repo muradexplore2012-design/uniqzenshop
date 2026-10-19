@@ -24,7 +24,7 @@ import { Order } from '../../types/order';
 import { formatCurrency, formatDate } from '../../lib/utils';
 
 export const AccountPage: React.FC = () => {
-  const { currentUser, userProfile, loginWithEmail, registerWithEmail, loginWithGoogle, resetPassword, logout } = useAuth();
+  const { currentUser, userProfile, loginWithEmail, registerWithEmail, loginWithGoogle, loginWithGoogleRedirect, resetPassword, logout } = useAuth();
   const { wishlistIds } = useWishlist();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -164,9 +164,27 @@ export const AccountPage: React.FC = () => {
           )}
 
           {authError && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{authError}</span>
+            <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl space-y-2.5">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600" />
+                <span className="leading-relaxed">{authError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  setAuthError('');
+                  setGoogleLoading(true);
+                  try {
+                    await loginWithGoogleRedirect();
+                  } catch (e: any) {
+                    setAuthError(e.message || 'Redirect failed');
+                    setGoogleLoading(false);
+                  }
+                }}
+                className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs shadow-xs transition-all flex items-center justify-center gap-2"
+              >
+                <span>Google রিডাইরেক্ট দিয়ে সরাসরি লগইন করুন (১০০% নিশ্চয়তা)</span>
+              </button>
             </div>
           )}
 

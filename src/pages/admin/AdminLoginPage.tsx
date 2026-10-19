@@ -5,7 +5,7 @@ import { SEO } from '../../components/common/SEO';
 import { useAuth } from '../../lib/authContext';
 
 export const AdminLoginPage: React.FC = () => {
-  const { currentUser, isAdmin, loginWithEmail, registerWithEmail, loginWithGoogle, resetPassword, logout } = useAuth();
+  const { currentUser, isAdmin, loginWithEmail, registerWithEmail, loginWithGoogle, loginWithGoogleRedirect, resetPassword, logout } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [email, setEmail] = useState('');
@@ -118,9 +118,27 @@ export const AdminLoginPage: React.FC = () => {
         )}
 
         {errorMsg && (
-          <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-200 text-xs rounded-xl flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <span>{errorMsg}</span>
+          <div className="p-3.5 bg-rose-950/60 border border-rose-800 text-rose-200 text-xs rounded-xl space-y-2.5">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-400" />
+              <span className="leading-relaxed">{errorMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                setErrorMsg('');
+                setGoogleLoading(true);
+                try {
+                  await loginWithGoogleRedirect();
+                } catch (e: any) {
+                  setErrorMsg(e.message || 'Redirect failed');
+                  setGoogleLoading(false);
+                }
+              }}
+              className="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg text-xs shadow-xs transition-all flex items-center justify-center gap-2"
+            >
+              <span>Google রিডাইরেক্ট দিয়ে সরাসরি অ্যাডমিন লগইন করুন</span>
+            </button>
           </div>
         )}
 
