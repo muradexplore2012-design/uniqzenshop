@@ -15,28 +15,22 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   className = '',
   theme = 'light',
 }) => {
-  const { loginWithGoogle } = useAuth();
+  const { loginWithGoogleRedirect } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleClick = async () => {
     setLoading(true);
     try {
-      const user = await loginWithGoogle();
-      if (user && onSuccess) {
-        onSuccess();
-      }
+      await loginWithGoogleRedirect();
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
       let msg = err.message || 'Google Sign-In failed. Please try again.';
       if (err.code === 'auth/unauthorized-domain') {
         msg = `Domain (${window.location.hostname}) is not authorized in Firebase Console.`;
-      } else if (err.code === 'auth/popup-closed-by-user') {
-        msg = 'Google sign-in popup was closed before completion. Please try again or use direct redirect below.';
       }
       if (onError) {
         onError(msg);
       }
-    } finally {
       setLoading(false);
     }
   };
