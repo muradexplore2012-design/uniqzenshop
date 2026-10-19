@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
+  signInWithCredential,
   getRedirectResult,
   sendPasswordResetEmail,
   GoogleAuthProvider,
@@ -25,6 +26,7 @@ interface AuthContextType {
   registerWithEmail: (email: string, pass: string, name: string, phone?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithGoogleRedirect: () => Promise<void>;
+  loginWithGoogleCredential: (idToken: string) => Promise<User | null>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -39,6 +41,7 @@ const AuthContext = createContext<AuthContextType>({
   registerWithEmail: async () => {},
   loginWithGoogle: async () => {},
   loginWithGoogleRedirect: async () => {},
+  loginWithGoogleCredential: async () => null,
   resetPassword: async () => {},
   logout: async () => {},
   refreshProfile: async () => {},
@@ -214,6 +217,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signInWithRedirect(auth, provider);
   };
 
+  const loginWithGoogleCredential = async (idToken: string) => {
+    if (!auth) throw new Error('Firebase Auth is not initialized');
+    const credential = GoogleAuthProvider.credential(idToken);
+    const res = await signInWithCredential(auth, credential);
+    if (res?.user) {
+      setCurrentUser(res.user);
+      const email = (res.user.email || '').toLowerCase();
+      const isStoreAdmin =
+        configuredAdminUids.includes(res.user.uid) ||
+        email === 'uniqzenshop@gmail.com' ||
+        email === 'muradexplore2012@gmail.com' ||
+        email === 'admin@uniqzen.com' ||
+        email.includes('admin') ||
+        email.includes('murad');
+
+      setIsAdmin(isStoreAdmin);
+      fetchUserProfile(res.user).catch((e) => console.warn(e));
+      return res.user;
+    }
+    return null;
+  };
+
   const loginWithGoogleRedirect = loginWithGoogle;
 
   const resetPassword = async (email: string) => {
@@ -246,6 +271,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         registerWithEmail,
         loginWithGoogle,
         loginWithGoogleRedirect,
+        loginWithGoogleCredential,
         resetPassword,
         logout,
         refreshProfile,

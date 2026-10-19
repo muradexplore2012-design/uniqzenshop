@@ -10,16 +10,22 @@ import {
   CheckCircle2,
   Truck,
   RotateCcw,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 import { SEO } from '../../components/common/SEO';
 import { EmptyState } from '../../components/common/EmptyState';
-import { getAllOrdersAdmin } from '../../services/orderService';
+import { getAllOrdersAdmin, deleteOrder } from '../../services/orderService';
 import { Order, OrderStatus } from '../../types/order';
 import { formatCurrency, formatDate } from '../../lib/utils';
+import { useAuth } from '../../lib/authContext';
+import { logAdminAction } from '../../services/auditService';
 
 export const AdminOrdersPage: React.FC = () => {
+  const { currentUser } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -42,6 +48,34 @@ export const AdminOrdersPage: React.FC = () => {
 
     return matchSearch && matchStatus;
   });
+
+  const handleDeleteOrder = async (order: Order) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete order "${order.orderNumber}" for ${order.customer.fullName}?\n\nThis will permanently delete this order record.`
+    );
+    if (!confirmDelete) return;
+
+    setDeletingId(order.id);
+    try {
+      await deleteOrder(order.id);
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+      if (currentUser) {
+        logAdminAction(
+          currentUser.uid,
+          'order.delete',
+          'order',
+          order.id,
+          { orderNumber: order.orderNumber, total: order.total },
+          currentUser.email || ''
+        );
+      }
+    } catch (e: any) {
+      console.error('Failed to delete order:', e);
+      alert(e.message || 'Failed to delete order. Please try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const getStatusBadgeClass = (status: OrderStatus) => {
     switch (status) {
@@ -168,13 +202,29 @@ export const AdminOrdersPage: React.FC = () => {
                     </td>
                     <td className="py-3 px-4 text-slate-400">{formatDate(o.createdAt)}</td>
                     <td className="py-3 px-4 text-right">
-                      <Link
-                        to={`/admin/orders/${o.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Manage</span>
-                      </Link>
+                      <div className="inline-flex items-center gap-1.5 justify-end">
+                        <Link
+                          to={`/admin/orders/${o.id}`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Manage</span>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOrder(o)}
+                          disabled={deletingId === o.id}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-rose-600 hover:text-white hover:bg-rose-600 bg-rose-50 border border-rose-200 text-[11px] font-semibold transition-all active:scale-95 disabled:opacity-50"
+                          title="Delete Order"
+                        >
+                          {deletingId === o.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                          <span>Delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

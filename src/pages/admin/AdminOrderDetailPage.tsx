@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Printer,
@@ -13,9 +13,10 @@ import {
   ShieldCheck,
   Save,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import { SEO } from '../../components/common/SEO';
-import { getOrderById, updateOrderStatus, updatePaymentStatus } from '../../services/orderService';
+import { getOrderById, updateOrderStatus, updatePaymentStatus, deleteOrder } from '../../services/orderService';
 import { Order, OrderStatus, PaymentStatus } from '../../types/order';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { logAdminAction } from '../../services/auditService';
@@ -23,10 +24,12 @@ import { useAuth } from '../../lib/authContext';
 
 export const AdminOrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   // Status update state
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus>('pending');
@@ -34,6 +37,34 @@ export const AdminOrderDetailPage: React.FC = () => {
   const [statusNote, setStatusNote] = useState('');
   const [updating, setUpdating] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+
+  const handleDeleteOrder = async () => {
+    if (!order) return;
+    const confirmDelete = window.confirm(
+      `Are you sure you want to permanently delete order "${order.orderNumber}" for ${order.customer.fullName}?\n\nThis action cannot be undone.`
+    );
+    if (!confirmDelete) return;
+
+    setDeleting(true);
+    try {
+      await deleteOrder(order.id);
+      if (currentUser) {
+        logAdminAction(
+          currentUser.uid,
+          'order.delete',
+          'order',
+          order.id,
+          { orderNumber: order.orderNumber, total: order.total },
+          currentUser.email || ''
+        );
+      }
+      navigate('/admin/orders');
+    } catch (e: any) {
+      console.error('Failed to delete order:', e);
+      alert(e.message || 'Failed to delete order. Please try again.');
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -139,13 +170,29 @@ export const AdminOrderDetailPage: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={handlePrint}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition-colors"
-        >
-          <Printer className="w-4 h-4 text-brand-secondary" />
-          <span>Print Official Invoice</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrint}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition-colors"
+          >
+            <Printer className="w-4 h-4 text-brand-secondary" />
+            <span>Print Official Invoice</span>
+          </button>
+
+          <button
+            onClick={handleDeleteOrder}
+            disabled={deleting}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white text-xs font-semibold shadow-xs transition-all active:scale-95 disabled:opacity-50"
+            title="Delete this order"
+          >
+            {deleting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+            <span>Delete Order</span>
+          </button>
+        </div>
       </div>
 
       {successMsg && (

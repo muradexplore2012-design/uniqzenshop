@@ -10,6 +10,7 @@ import {
   orderBy,
   runTransaction,
   serverTimestamp,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Order, OrderItem, CustomerInfo, OrderStatus, PaymentStatus, PaymentMethod, PaymentDetails } from '../types/order';
@@ -275,3 +276,15 @@ export async function updatePaymentStatus(
     updatedAt: serverTimestamp(),
   });
 }
+
+export async function deleteOrder(orderId: string): Promise<boolean> {
+  if (!db || !orderId) return false;
+  try {
+    await deleteDoc(doc(db, COLLECTION_NAME, orderId));
+    return true;
+  } catch (e) {
+    console.error('Error deleting order:', e);
+    throw e;
+  }
+}
+
