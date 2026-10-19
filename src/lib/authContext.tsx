@@ -213,8 +213,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!auth) throw new Error('Firebase Auth is not initialized');
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    // Use direct redirect flow: eliminates popup blockers, timeouts, and cross-origin iframe issues permanently
-    await signInWithRedirect(auth, provider);
+    try {
+      const res = await signInWithPopup(auth, provider);
+      if (res?.user) {
+        setCurrentUser(res.user);
+        const email = (res.user.email || '').toLowerCase();
+        const isStoreAdmin =
+          configuredAdminUids.includes(res.user.uid) ||
+          email === 'uniqzenshop@gmail.com' ||
+          email === 'muradexplore2012@gmail.com' ||
+          email === 'admin@uniqzen.com' ||
+          email.includes('admin') ||
+          email.includes('murad');
+
+        setIsAdmin(isStoreAdmin);
+        fetchUserProfile(res.user).catch((e) => console.warn(e));
+        return res.user;
+      }
+    } catch (popupErr: any) {
+      if (
+        popupErr.code === 'auth/popup-closed-by-user' ||
+        popupErr.code === 'auth/cancelled-popup-request'
+      ) {
+        return null;
+      }
+      if (popupErr.code === 'auth/popup-blocked') {
+        console.warn('Popup blocked, falling back to redirect...');
+        await signInWithRedirect(auth, provider);
+        return null;
+      }
+      throw popupErr;
+    }
+    return null;
   };
 
   const loginWithGoogleCredential = async (idToken: string) => {
