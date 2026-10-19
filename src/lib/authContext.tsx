@@ -210,71 +210,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!auth) throw new Error('Firebase Auth is not initialized');
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-
-    // 90-second safety timer so users have ample time for 2FA/account picker
-    let timerId: any;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timerId = setTimeout(() => {
-        const timeoutErr: any = new Error('Google Sign-In timed out. Please try again or check browser popup settings.');
-        timeoutErr.code = 'auth/timeout';
-        reject(timeoutErr);
-      }, 90000);
-    });
-
-    try {
-      const res = await Promise.race([
-        signInWithPopup(auth, provider),
-        timeoutPromise,
-      ]);
-      clearTimeout(timerId);
-
-      if (res?.user) {
-        // Immediate synchronous state update
-        setCurrentUser(res.user);
-        const email = (res.user.email || '').toLowerCase();
-        if (
-          configuredAdminUids.includes(res.user.uid) ||
-          email === 'uniqzenshop@gmail.com' ||
-          email === 'muradexplore2012@gmail.com' ||
-          email === 'admin@uniqzen.com' ||
-          email.includes('admin') ||
-          email.includes('murad')
-        ) {
-          setIsAdmin(true);
-        }
-        // Background sync Firestore profile without blocking login UI
-        fetchUserProfile(res.user).catch((err) =>
-          console.warn('Background profile fetch notice:', err)
-        );
-      }
-    } catch (popupErr: any) {
-      clearTimeout(timerId);
-
-      // If user closed the popup intentionally, do not trigger a redirect, simply stop loading cleanly
-      if (
-        popupErr.code === 'auth/popup-closed-by-user' ||
-        popupErr.code === 'auth/cancelled-popup-request'
-      ) {
-        return;
-      }
-
-      // If browser strictly blocked popup from opening, fallback to redirect
-      if (popupErr.code === 'auth/popup-blocked') {
-        console.warn('Popup blocked by browser, falling back to signInWithRedirect...');
-        await signInWithRedirect(auth, provider);
-        return;
-      }
-
-      throw popupErr;
-    }
-  };
-
-  const loginWithGoogleRedirect = async () => {
-    if (!auth) throw new Error('Firebase Auth is not initialized');
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
+    // Use direct redirect flow: eliminates popup blockers, timeouts, and cross-origin iframe issues permanently
     await signInWithRedirect(auth, provider);
   };
+
+  const loginWithGoogleRedirect = loginWithGoogle;
 
   const resetPassword = async (email: string) => {
     if (!auth) throw new Error('Firebase Auth is not initialized');

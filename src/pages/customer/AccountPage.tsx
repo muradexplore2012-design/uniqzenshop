@@ -95,18 +95,14 @@ export const AccountPage: React.FC = () => {
     setGoogleLoading(true);
     try {
       await loginWithGoogle();
+      // Browser navigates directly to Google authentication page
     } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-        let msg = err.message || 'Failed to sign in with Google. Please try again.';
-        if (err.code === 'auth/unauthorized-domain') {
-          msg = `This domain (${window.location.hostname}) is not authorized in Firebase Console yet. Please add "${window.location.hostname}" to Firebase Console -> Authentication -> Settings -> Authorized domains.`;
-        } else if (err.code === 'auth/timeout') {
-          msg = 'লগইন উইন্ডোটি সাড়া দিচ্ছে না বা বন্ধ হয়ে গেছে। অনুগ্রহ করে আবার চেষ্টা করুন বা ইমেইল দিয়ে লগইন করুন।';
-        }
-        setAuthError(msg);
-      }
-    } finally {
       setGoogleLoading(false);
+      let msg = err.message || 'Failed to sign in with Google. Please try again.';
+      if (err.code === 'auth/unauthorized-domain') {
+        msg = `This domain (${window.location.hostname}) is not authorized in Firebase Console yet. Please add "${window.location.hostname}" to Firebase Console -> Authentication -> Settings -> Authorized domains.`;
+      }
+      setAuthError(msg);
     }
   };
 
@@ -322,7 +318,7 @@ export const AccountPage: React.FC = () => {
             {googleLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
-                <span>Signing in...</span>
+                <span>Connecting to Google...</span>
               </>
             ) : (
               <>
