@@ -171,27 +171,9 @@ export const AccountPage: React.FC = () => {
           )}
 
           {authError && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl space-y-2.5">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600" />
-                <span className="leading-relaxed">{authError}</span>
-              </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  setAuthError('');
-                  setGoogleLoading(true);
-                  try {
-                    await loginWithGoogleRedirect();
-                  } catch (e: any) {
-                    setAuthError(e.message || 'Redirect failed');
-                    setGoogleLoading(false);
-                  }
-                }}
-                className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-xs shadow-xs transition-all flex items-center justify-center gap-2"
-              >
-                <span>Google রিডাইরেক্ট দিয়ে সরাসরি লগইন করুন (১০০% নিশ্চয়তা)</span>
-              </button>
+            <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600" />
+              <span className="leading-relaxed">{authError}</span>
             </div>
           )}
 
@@ -326,26 +308,6 @@ export const AccountPage: React.FC = () => {
             }}
             onError={(err) => setAuthError(err)}
           />
-
-          <div className="text-center pt-1">
-            <button
-              type="button"
-              disabled={googleLoading}
-              onClick={async () => {
-                setAuthError('');
-                setGoogleLoading(true);
-                try {
-                  await loginWithGoogleRedirect();
-                } catch (e: any) {
-                  setAuthError(e.message || 'Direct redirect failed');
-                  setGoogleLoading(false);
-                }
-              }}
-              className="text-xs text-slate-500 hover:text-slate-800 underline font-medium transition-colors"
-            >
-              পপআপে সমস্যা হচ্ছে? সরাসরি Google Redirect দিয়ে লগইন করুন
-            </button>
-          </div>
 
           <div className="pt-2 text-center text-xs text-slate-500">
             <Link to="/track-order" className="hover:underline text-brand-primary">
