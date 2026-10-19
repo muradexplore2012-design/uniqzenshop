@@ -19,7 +19,7 @@ export const AdminLoginPage: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState('');
 
   // If still checking session persistence, show clean spinner
-  if (authLoading) {
+  if (authLoading && !currentUser) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-brand-secondary" />

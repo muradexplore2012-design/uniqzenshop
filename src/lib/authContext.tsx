@@ -50,10 +50,10 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(auth?.currentUser || null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(!auth?.currentUser);
 
   // Configured Admin UIDs (supports comma-separated list or default initial administrator UID)
   const configuredAdminUids = (
@@ -139,20 +139,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (result?.user) {
           setCurrentUser(result.user);
           const email = (result.user.email || '').toLowerCase();
-          if (
+          const isStoreAdmin =
             configuredAdminUids.includes(result.user.uid) ||
             email === 'uniqzenshop@gmail.com' ||
             email === 'muradexplore2012@gmail.com' ||
+            email === 'admin@uniqzen.com' ||
             email.includes('admin') ||
-            email.includes('murad')
-          ) {
-            setIsAdmin(true);
-          }
-          await fetchUserProfile(result.user);
+            email.includes('murad');
+          setIsAdmin(isStoreAdmin);
+          setLoading(false); // Unblock UI immediately!
+          fetchUserProfile(result.user).catch((e) => console.warn(e));
+        } else if (!auth.currentUser) {
+          setLoading(false);
         }
       })
       .catch((err) => {
         console.error('Redirect sign-in error:', err);
+        setLoading(false);
       });
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {

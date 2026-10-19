@@ -108,7 +108,7 @@ export const AccountPage: React.FC = () => {
   };
 
   // While auth state is initializing or checking credentials: show smooth spinner
-  if (loading) {
+  if (loading && !currentUser) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
