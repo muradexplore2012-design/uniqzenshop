@@ -6,9 +6,21 @@
   NODE_VERSION = "20"
 
 [[redirects]]
+  from = "/__/auth/*"
+  to = "https://uniqzenshop-8ee15.firebaseapp.com/__/auth/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Cross-Origin-Embedder-Policy = "unsafe-none"
 
 [[headers]]
   for = "/assets/*"
