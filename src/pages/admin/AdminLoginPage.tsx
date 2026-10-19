@@ -64,7 +64,11 @@ export const AdminLoginPage: React.FC = () => {
       await loginWithGoogle();
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-        setErrorMsg(err.message || 'Failed to sign in with Google. Please try again.');
+        let msg = err.message || 'Failed to sign in with Google. Please try again.';
+        if (err.code === 'auth/unauthorized-domain') {
+          msg = `এই ডোমেইনটি (${window.location.hostname}) Firebase Console-এ অথোরাইজ করা নেই। অনুগ্রহ করে Firebase Console > Authentication > Settings > Authorized domains-এ যোগ করুন।`;
+        }
+        setErrorMsg(msg);
       }
     } finally {
       setGoogleLoading(false);

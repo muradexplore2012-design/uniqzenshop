@@ -97,7 +97,11 @@ export const AccountPage: React.FC = () => {
       await loginWithGoogle();
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-        setAuthError(err.message || 'Failed to sign in with Google. Please try again.');
+        let msg = err.message || 'Failed to sign in with Google. Please try again.';
+        if (err.code === 'auth/unauthorized-domain') {
+          msg = `This domain (${window.location.hostname}) is not authorized in Firebase Console yet. Please add "${window.location.hostname}" to Firebase Console -> Authentication -> Settings -> Authorized domains.`;
+        }
+        setAuthError(msg);
       }
     } finally {
       setGoogleLoading(false);
