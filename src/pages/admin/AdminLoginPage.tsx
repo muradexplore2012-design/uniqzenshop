@@ -4,6 +4,7 @@ import { Lock, Mail, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { SEO } from '../../components/common/SEO';
 import { useAuth } from '../../lib/authContext';
 import { GoogleSignInButton } from '../../components/common/GoogleSignInButton';
+import { isAuthorizedAdminEmail } from '../../services/adminRoleService';
 
 export const AdminLoginPage: React.FC = () => {
   const { currentUser, isAdmin, loading: authLoading, loginWithEmail, loginWithGoogle, resetPassword, logout } = useAuth();
@@ -42,7 +43,14 @@ export const AdminLoginPage: React.FC = () => {
       if (mode === 'login') {
         await loginWithEmail(email.trim(), password);
       } else if (mode === 'forgot') {
-        await resetPassword(email.trim());
+        const cleanEmail = email.trim();
+        const isAuthorized = await isAuthorizedAdminEmail(cleanEmail);
+        if (!isAuthorized) {
+          setErrorMsg('নিরাপত্তাজনিত কারণে পাসওয়ার্ড রিসেট করা যাচ্ছে না: এই ইমেইলটি অ্যাডমিন লিস্টে নেই। শুধুমাত্র Make Admin সেটিংসের অনুমোদিত অ্যাডমিন ইমেইলেই রিসেট লিংক পাঠানো যাবে।');
+          setLoading(false);
+          return;
+        }
+        await resetPassword(cleanEmail);
         setSuccessMsg('পাসওয়ার্ড রিসেট লিংকটি আপনার ইমেইলে পাঠিয়ে দেওয়া হয়েছে! আপনার Gmail Inbox (অথবা Spam ফোল্ডার) চেক করে নতুন পাসওয়ার্ড সেট করে নিন।');
         setLoading(false);
         return;

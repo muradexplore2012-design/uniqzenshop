@@ -19,7 +19,13 @@ import { getStoreSettings, updateStoreSettings } from '../../services/settingsSe
 import { StoreSettings } from '../../types/settings';
 import { logAdminAction } from '../../services/auditService';
 import { useAuth } from '../../lib/authContext';
-import { makeUserAdmin, isValidEmail, getAdminUsers, revokeAdminRole } from '../../services/adminRoleService';
+import {
+  makeUserAdmin,
+  isValidEmail,
+  getAdminUsers,
+  revokeAdminRole,
+  syncAdminDirectory,
+} from '../../services/adminRoleService';
 import { UserProfile } from '../../types/user';
 import { formatDate } from '../../lib/utils';
 
@@ -67,6 +73,8 @@ export const AdminSettingsPage: React.FC = () => {
         });
       }
       setAdminList(list);
+      // Synchronize admin directory so forgot-password check accurately recognizes active admins
+      syncAdminDirectory(list.map((a) => a.email).filter(Boolean) as string[]).catch(() => {});
     } catch (e) {
       console.error('Error loading admins:', e);
     } finally {

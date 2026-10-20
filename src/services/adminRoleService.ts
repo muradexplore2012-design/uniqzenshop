@@ -1,5 +1,15 @@
 import { httpsCallable } from 'firebase/functions';
-import { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { functions, db } from '../lib/firebase';
 import { logAdminAction } from './auditService';
 import { UserProfile } from '../types/user';
@@ -162,6 +172,9 @@ export async function makeUserAdmin(
       updatedAt: serverTimestamp(),
     });
 
+    // Sync admin directory for login password reset security
+    syncAdminDirectory().catch(() => {});
+
     // Record audit log
     if (caller.uid) {
       logAdminAction(
@@ -273,6 +286,9 @@ export async function revokeAdminRole(
       );
     }
 
+    // Sync admin directory for login password reset security
+    syncAdminDirectory().catch(() => {});
+
     return {
       success: true,
       message: 'Admin access successfully revoked. User role set back to customer.',
@@ -284,5 +300,86 @@ export async function revokeAdminRole(
       message: err.message || 'Failed to revoke admin role.',
     };
   }
+}
+
+/**
+ * Synchronizes the list of active administrator email addresses to settings/admin_directory.
+ * This document is publicly readable so the login page can securely verify whether an email
+ * requesting a password reset is an authorized administrator before sending any reset link.
+ */
+export async function syncAdminDirectory(emails?: string[]): Promise<void> {
+  if (!db) return;
+  try {
+    let list = emails || [];
+    if (!emails || emails.length === 0) {
+      const admins = await getAdminUsers();
+      list = admins.map((a) => a.email).filter(Boolean) as string[];
+    }
+    const cleanEmails = Array.from(
+      new Set([
+        ...list.map((e) => e.trim().toLowerCase()),
+        'muradexplore2012@gmail.com',
+        'admin@uniqzen.com',
+        'uniqzenshop@gmail.com',
+      ])
+    ).filter(Boolean);
+
+    await setDoc(
+      doc(db, 'settings', 'admin_directory'),
+      {
+        emails: cleanEmails,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('Could not sync admin directory:', err);
+  }
+}
+
+/**
+ * Verifies if an email belongs to an authorized administrator in the Make Admin / Admin list.
+ * Only if this returns true will the password reset link be dispatched.
+ */
+export async function isAuthorizedAdminEmail(targetEmail: string): Promise<boolean> {
+  const cleanEmail = targetEmail.trim().toLowerCase();
+  if (!cleanEmail) return false;
+
+  // 1. Primary permanent store admin emails
+  const defaultAdmins = [
+    'muradexplore2012@gmail.com',
+    'admin@uniqzen.com',
+    'uniqzenshop@gmail.com',
+  ];
+  if (defaultAdmins.includes(cleanEmail)) {
+    return true;
+  }
+
+  // 2. Read admin_directory from settings collection (publicly readable via firestore.rules)
+  if (db) {
+    try {
+      const dirSnap = await getDoc(doc(db, 'settings', 'admin_directory'));
+      if (dirSnap.exists()) {
+        const storedEmails: string[] = dirSnap.data()?.emails || [];
+        if (storedEmails.map((e) => e.trim().toLowerCase()).includes(cleanEmail)) {
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not verify admin directory:', e);
+    }
+
+    // 3. If caller has active admin credentials, query database directly
+    try {
+      const users = await getAdminUsers();
+      if (users.some((u) => (u.email || '').toLowerCase().trim() === cleanEmail)) {
+        return true;
+      }
+    } catch {
+      // Ignored for unauthenticated users
+    }
+  }
+
+  return false;
 }
 
