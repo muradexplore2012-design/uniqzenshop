@@ -983,36 +983,7 @@ export const AdminProductFormPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Section 8: SEO Meta */}
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-subtle space-y-4">
-          <h2 className="text-base font-bold text-slate-900 pb-2 border-b border-slate-100">
-            Search Engine Optimization (SEO)
-          </h2>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">SEO Title</label>
-            <input
-              type="text"
-              placeholder={name || 'Product SEO Title'}
-              value={seoTitle}
-              onChange={(e) => setSeoTitle(e.target.value)}
-              className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Meta Description
-            </label>
-            <textarea
-              rows={2}
-              placeholder="Search snippet summary..."
-              value={seoDescription}
-              onChange={(e) => setSeoDescription(e.target.value)}
-              className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 outline-none"
-            />
-          </div>
-        </div>
 
         {/* Bottom Alerts & Actions */}
         {errorMsg && (
