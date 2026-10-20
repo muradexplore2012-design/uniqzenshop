@@ -177,15 +177,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Safety timer: Never hold loading state for more than 200ms
-    const safetyTimer = setTimeout(() => {
+    // Fallback timer: Only unblock if network completely hangs for more than 6s
+    const fallbackTimer = setTimeout(() => {
       setLoading(false);
-    }, 200);
+    }, 6000);
 
     // Check if returning from a Google redirect sign-in
     getRedirectResult(auth)
       .then(async (result) => {
-        clearTimeout(safetyTimer);
+        clearTimeout(fallbackTimer);
         if (result?.user) {
           setCurrentUser(result.user);
           const email = (result.user.email || '').toLowerCase();
@@ -205,13 +205,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       })
       .catch((err) => {
-        clearTimeout(safetyTimer);
+        clearTimeout(fallbackTimer);
         console.error('Redirect sign-in error:', err);
         setLoading(false);
       });
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      clearTimeout(safetyTimer);
+      clearTimeout(fallbackTimer);
       setCurrentUser(user);
       if (user) {
         // Immediate synchronous admin check to eliminate loading delays and access denied race conditions
@@ -237,7 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => {
-      clearTimeout(safetyTimer);
+      clearTimeout(fallbackTimer);
       unsubscribe();
     };
   }, []);

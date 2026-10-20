@@ -107,7 +107,17 @@ export const AccountPage: React.FC = () => {
     }
   };
 
-  // If user is not logged in: display login / register portal immediately (zero waiting)
+  // While auth state is initializing: show clean, fast signing in indicator
+  if (loading && !currentUser) {
+    return (
+      <div className="min-h-[40vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+        <p className="text-sm font-semibold text-slate-700">Signing in, please wait...</p>
+      </div>
+    );
+  }
+
+  // If user is not logged in: display login / register portal
   if (!currentUser) {
     return (
       <div className="max-w-md mx-auto px-4 py-16">
