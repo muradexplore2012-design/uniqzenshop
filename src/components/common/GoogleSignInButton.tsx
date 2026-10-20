@@ -15,22 +15,38 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   className = '',
   theme = 'light',
 }) => {
-  const { loginWithGoogleRedirect } = useAuth();
+  const { loginWithGoogle, loginWithGoogleRedirect } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleClick = async () => {
     setLoading(true);
     try {
-      await loginWithGoogleRedirect();
+      // 1. Try popup first for instant login without full page reload
+      const user = await loginWithGoogle();
+      if (user && onSuccess) {
+        onSuccess();
+      }
     } catch (err: any) {
-      console.error('Google Sign-In Error:', err);
-      let msg = err.message || 'Google Sign-In failed. Please try again.';
-      if (err.code === 'auth/unauthorized-domain') {
+      console.warn('Google sign-in notice:', err?.code, err?.message);
+      // 2. If popup is blocked by browser, fall back cleanly to redirect
+      if (err?.code === 'auth/popup-blocked') {
+        try {
+          await loginWithGoogleRedirect();
+          return;
+        } catch (redirectErr: any) {
+          console.error('Google Redirect Error:', redirectErr);
+        }
+      }
+      let msg = err?.message || 'Google Sign-In failed. Please try again.';
+      if (err?.code === 'auth/popup-closed-by-user') {
+        msg = 'Sign-in window was closed. Please try again.';
+      } else if (err?.code === 'auth/unauthorized-domain') {
         msg = `Domain (${window.location.hostname}) is not authorized in Firebase Console.`;
       }
       if (onError) {
         onError(msg);
       }
+    } finally {
       setLoading(false);
     }
   };

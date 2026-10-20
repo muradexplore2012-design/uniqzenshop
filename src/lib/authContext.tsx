@@ -49,55 +49,11 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-const CACHE_USER_KEY = 'uniqzen_auth_cached_user';
-const CACHE_ADMIN_KEY = 'uniqzen_auth_cached_is_admin';
-
-const getInitialCachedUser = (): any => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(CACHE_USER_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-
-const getInitialIsAdmin = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  try {
-    return localStorage.getItem(CACHE_ADMIN_KEY) === 'true';
-  } catch {
-    return false;
-  }
-};
-
-const syncUserCache = (user: User | null, adminFlag: boolean) => {
-  if (typeof window === 'undefined') return;
-  try {
-    if (user) {
-      localStorage.setItem(
-        CACHE_USER_KEY,
-        JSON.stringify({
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-        })
-      );
-      localStorage.setItem(CACHE_ADMIN_KEY, adminFlag ? 'true' : 'false');
-    } else {
-      localStorage.removeItem(CACHE_USER_KEY);
-      localStorage.removeItem(CACHE_ADMIN_KEY);
-    }
-  } catch {}
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const cachedUser = getInitialCachedUser();
-  const [currentUser, setCurrentUser] = useState<User | null>(auth?.currentUser || cachedUser || null);
+  const [currentUser, setCurrentUser] = useState<User | null>(auth?.currentUser || null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean>(getInitialIsAdmin);
-  const [loading, setLoading] = useState<boolean>(!auth?.currentUser && !cachedUser);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(!auth?.currentUser);
 
   // Configured Admin UIDs (supports comma-separated list or default initial administrator UID)
   const configuredAdminUids = (
@@ -177,15 +133,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Fallback timer: Only unblock if network completely hangs for more than 6s
-    const fallbackTimer = setTimeout(() => {
-      setLoading(false);
-    }, 6000);
+    // 1. Primary Auth Listener
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (user) {
+        const email = (user.email || '').toLowerCase();
+        const isAdminImmediate =
+          configuredAdminUids.includes(user.uid) ||
+          email === 'uniqzenshop@gmail.com' ||
+          email === 'muradexplore2012@gmail.com' ||
+          email === 'admin@uniqzen.com' ||
+          email.includes('admin') ||
+          email.includes('murad');
+        
+        setIsAdmin(isAdminImmediate);
+        setLoading(false);
+        fetchUserProfile(user).catch((e) => console.warn(e));
+      } else {
+        setUserProfile(null);
+        setIsAdmin(false);
+        setLoading(false);
+      }
+    });
 
-    // Check if returning from a Google redirect sign-in
+    // 2. Check if returning from a Google redirect
     getRedirectResult(auth)
-      .then(async (result) => {
-        clearTimeout(fallbackTimer);
+      .then((result) => {
         if (result?.user) {
           setCurrentUser(result.user);
           const email = (result.user.email || '').toLowerCase();
@@ -197,49 +170,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email.includes('admin') ||
             email.includes('murad');
           setIsAdmin(isStoreAdmin);
-          syncUserCache(result.user, isStoreAdmin);
-          setLoading(false); // Unblock UI immediately!
-          fetchUserProfile(result.user).catch((e) => console.warn(e));
-        } else {
           setLoading(false);
+          fetchUserProfile(result.user).catch((e) => console.warn(e));
         }
       })
       .catch((err) => {
-        clearTimeout(fallbackTimer);
-        console.error('Redirect sign-in error:', err);
-        setLoading(false);
+        console.warn('Redirect sign-in notice:', err);
       });
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      clearTimeout(fallbackTimer);
-      setCurrentUser(user);
-      if (user) {
-        // Immediate synchronous admin check to eliminate loading delays and access denied race conditions
-        const email = (user.email || '').toLowerCase();
-        const isAdminImmediate =
-          configuredAdminUids.includes(user.uid) ||
-          email === 'uniqzenshop@gmail.com' ||
-          email === 'muradexplore2012@gmail.com' ||
-          email === 'admin@uniqzen.com' ||
-          email.includes('admin') ||
-          email.includes('murad');
-        
-        setIsAdmin(isAdminImmediate);
-        syncUserCache(user, isAdminImmediate);
-        setLoading(false); // Unblock UI immediately!
-        fetchUserProfile(user); // Sync Firestore profile in background
-      } else {
-        setUserProfile(null);
-        setIsAdmin(false);
-        syncUserCache(null, false);
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      clearTimeout(fallbackTimer);
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
   const loginWithEmail = async (email: string, pass: string) => {
@@ -288,7 +227,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email.includes('murad');
 
         setIsAdmin(isStoreAdmin);
-        syncUserCache(res.user, isStoreAdmin);
         setLoading(false);
         fetchUserProfile(res.user).catch((e) => console.warn(e));
         return res.user;
@@ -323,7 +261,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email.includes('murad');
 
       setIsAdmin(isStoreAdmin);
-      syncUserCache(res.user, isStoreAdmin);
       setLoading(false);
       fetchUserProfile(res.user).catch((e) => console.warn(e));
       return res.user;
@@ -346,7 +283,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     if (!auth) return;
     await fbSignOut(auth);
-    syncUserCache(null, false);
     setCurrentUser(null);
     setUserProfile(null);
     setIsAdmin(false);
