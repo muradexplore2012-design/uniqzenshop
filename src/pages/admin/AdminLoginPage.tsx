@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
 import { Navigate, Link, useNavigate } from 'react-router-dom';
-import { Lock, Mail, ShieldCheck, AlertCircle, Loader2, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { SEO } from '../../components/common/SEO';
 import { useAuth } from '../../lib/authContext';
 import { GoogleSignInButton } from '../../components/common/GoogleSignInButton';
 
 export const AdminLoginPage: React.FC = () => {
-  const { currentUser, isAdmin, loading: authLoading, loginWithEmail, registerWithEmail, loginWithGoogle, loginWithGoogleRedirect, resetPassword, logout } = useAuth();
+  const { currentUser, isAdmin, loading: authLoading, loginWithEmail, loginWithGoogle, resetPassword, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [mode, setMode] = useState<'login' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -42,9 +41,6 @@ export const AdminLoginPage: React.FC = () => {
     try {
       if (mode === 'login') {
         await loginWithEmail(email.trim(), password);
-      } else if (mode === 'register') {
-        await registerWithEmail(email.trim(), password, fullName.trim() || 'Store Administrator');
-        setSuccessMsg('Admin account created successfully! You are now signed in.');
       } else if (mode === 'forgot') {
         await resetPassword(email.trim());
         setSuccessMsg('পাসওয়ার্ড রিসেট লিংকটি আপনার ইমেইলে পাঠিয়ে দেওয়া হয়েছে! আপনার Gmail Inbox (অথবা Spam ফোল্ডার) চেক করে নতুন পাসওয়ার্ড সেট করে নিন।');
@@ -55,7 +51,7 @@ export const AdminLoginPage: React.FC = () => {
       console.error('Admin Auth Error:', err);
       let msg = err.message || 'Authentication failed.';
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        msg = 'Invalid email or password. If you haven\'t created an account yet, click "Create Admin Account" below.';
+        msg = 'Invalid email or password. Please verify your admin credentials.';
       } else if (err.code === 'auth/email-already-in-use') {
         msg = 'This email already exists. Please sign in instead.';
       } else if (err.code === 'auth/weak-password') {
@@ -97,14 +93,12 @@ export const AdminLoginPage: React.FC = () => {
             className="h-12 mx-auto object-contain bg-white p-1 rounded-xl shadow-xs"
           />
           <h1 className="text-xl font-bold text-white tracking-tight">
-            {mode === 'login' && 'Staff Administration Portal'}
-            {mode === 'register' && 'Create Admin Account'}
-            {mode === 'forgot' && 'Reset Admin Password'}
+            {mode === 'login' ? 'Staff Administration Portal' : 'Reset Admin Password'}
           </h1>
           <p className="text-xs text-slate-400">
-            {mode === 'login' && 'Sign in with administrator credentials to manage Uniqzen Shop.'}
-            {mode === 'register' && 'Create your store administrator account with your store email.'}
-            {mode === 'forgot' && 'আপনার অ্যাডমিন ইমেইলটি লিখে বাটনে চাপ দিন। আপনার ইনবক্সে পাসওয়ার্ড রিসেট লিংক চলে যাবে।'}
+            {mode === 'login'
+              ? 'Sign in with administrator credentials to manage Uniqzen Shop.'
+              : 'আপনার অ্যাডমিন ইমেইলটি লিখে বাটনে চাপ দিন। আপনার ইনবক্সে পাসওয়ার্ড রিসেট লিংক চলে যাবে।'}
           </p>
         </div>
 
@@ -140,24 +134,6 @@ export const AdminLoginPage: React.FC = () => {
         )}
 
         <form onSubmit={handleLogin} className="space-y-4">
-          {mode === 'register' && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Full Name
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  required
-                  placeholder="Store Admin"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full text-sm pl-4 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-secondary focus:border-transparent"
-                />
-              </div>
-            </div>
-          )}
-
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
               Admin Email
@@ -166,7 +142,7 @@ export const AdminLoginPage: React.FC = () => {
               <input
                 type="email"
                 required
-                placeholder="admin@uniqzen.com or muradexplore2012@gmail.com"
+                placeholder=""
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full text-sm pl-10 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-secondary focus:border-transparent"
@@ -189,7 +165,7 @@ export const AdminLoginPage: React.FC = () => {
                       setErrorMsg('');
                       setSuccessMsg('');
                     }}
-                    className="text-[11px] text-brand-secondary hover:underline font-medium"
+                    className="text-[11px] text-white hover:text-slate-200 hover:underline font-medium transition-colors"
                   >
                     Forgot Password? (পাসওয়ার্ড ভুলে গেছেন?)
                   </button>
@@ -221,8 +197,6 @@ export const AdminLoginPage: React.FC = () => {
               </>
             ) : mode === 'login' ? (
               <span>Sign In to Admin Panel</span>
-            ) : mode === 'register' ? (
-              <span>Create Administrator Account</span>
             ) : (
               <span>Send Password Reset Link (রিসেট লিংক পাঠান)</span>
             )}
@@ -230,27 +204,10 @@ export const AdminLoginPage: React.FC = () => {
         </form>
 
         {/* Toggle Mode Links */}
-        <div className="text-center text-xs space-y-2">
-          {mode === 'login' && (
+        {mode === 'forgot' && (
+          <div className="text-center text-xs">
             <p className="text-slate-400">
-              Don't have an admin login yet?{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('register');
-                  setErrorMsg('');
-                  setSuccessMsg('');
-                }}
-                className="font-bold text-brand-secondary hover:underline"
-              >
-                Create Admin Account
-              </button>
-            </p>
-          )}
-
-          {mode !== 'login' && (
-            <p className="text-slate-400">
-              Already have credentials?{' '}
+              Remember your password?{' '}
               <button
                 type="button"
                 onClick={() => {
@@ -258,13 +215,13 @@ export const AdminLoginPage: React.FC = () => {
                   setErrorMsg('');
                   setSuccessMsg('');
                 }}
-                className="font-bold text-brand-secondary hover:underline"
+                className="font-bold text-white hover:underline"
               >
                 Back to Sign In
               </button>
             </p>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Divider */}
         <div className="relative my-2">
