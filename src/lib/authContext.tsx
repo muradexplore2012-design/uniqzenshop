@@ -133,8 +133,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    let isMounted = true;
+
     // 1. Primary Auth Listener
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!isMounted) return;
       setCurrentUser(user);
       if (user) {
         const email = (user.email || '').toLowerCase();
@@ -156,14 +159,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // 2. Check if returning from a Google redirect
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          setCurrentUser(result.user);
-          const email = (result.user.email || '').toLowerCase();
+    // 2. Check if returning from a Google redirect with a 2s race so it NEVER hangs
+    const redirectTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 2000));
+    Promise.race([getRedirectResult(auth), redirectTimeout])
+      .then((result: any) => {
+        if (!isMounted) return;
+        const loggedUser = result?.user || auth.currentUser;
+        if (loggedUser) {
+          setCurrentUser(loggedUser);
+          const email = (loggedUser.email || '').toLowerCase();
           const isStoreAdmin =
-            configuredAdminUids.includes(result.user.uid) ||
+            configuredAdminUids.includes(loggedUser.uid) ||
             email === 'uniqzenshop@gmail.com' ||
             email === 'muradexplore2012@gmail.com' ||
             email === 'admin@uniqzen.com' ||
@@ -171,14 +177,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email.includes('murad');
           setIsAdmin(isStoreAdmin);
           setLoading(false);
-          fetchUserProfile(result.user).catch((e) => console.warn(e));
+          fetchUserProfile(loggedUser).catch((e) => console.warn(e));
+        } else {
+          setLoading(false);
         }
       })
       .catch((err) => {
         console.warn('Redirect sign-in notice:', err);
+        if (!isMounted) return;
+        if (auth.currentUser) {
+          setCurrentUser(auth.currentUser);
+        }
+        setLoading(false);
       });
 
-    return () => unsubscribe();
+    // 3. Absolute safety timer: loading MUST unblock within 2.5s
+    const maxSafetyTimer = setTimeout(() => {
+      if (!isMounted) return;
+      if (auth?.currentUser) {
+        setCurrentUser(auth.currentUser);
+      }
+      setLoading(false);
+    }, 2500);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(maxSafetyTimer);
+      unsubscribe();
+    };
   }, []);
 
   const loginWithEmail = async (email: string, pass: string) => {
