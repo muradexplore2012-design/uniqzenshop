@@ -159,9 +159,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // 2. Check if returning from a Google redirect with a 2s race so it NEVER hangs
-    const redirectTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 2000));
-    Promise.race([getRedirectResult(auth), redirectTimeout])
+    // 2. Check if returning from a Google redirect
+    getRedirectResult(auth)
       .then((result: any) => {
         if (!isMounted) return;
         const loggedUser = result?.user || auth.currentUser;
@@ -178,27 +177,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsAdmin(isStoreAdmin);
           setLoading(false);
           fetchUserProfile(loggedUser).catch((e) => console.warn(e));
-        } else {
-          setLoading(false);
         }
       })
       .catch((err) => {
         console.warn('Redirect sign-in notice:', err);
-        if (!isMounted) return;
-        if (auth.currentUser) {
-          setCurrentUser(auth.currentUser);
-        }
-        setLoading(false);
       });
 
-    // 3. Absolute safety timer: loading MUST unblock within 2.5s
+    // 3. Safety timer: ensures loading state releases smoothly
     const maxSafetyTimer = setTimeout(() => {
       if (!isMounted) return;
       if (auth?.currentUser) {
         setCurrentUser(auth.currentUser);
       }
       setLoading(false);
-    }, 2500);
+    }, 2000);
 
     return () => {
       isMounted = false;
@@ -209,14 +201,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithEmail = async (email: string, pass: string) => {
     if (!auth) throw new Error('Firebase Auth is not initialized');
-    await signInWithEmailAndPassword(auth, email, pass);
+    const res = await signInWithEmailAndPassword(auth, email, pass);
+    if (res?.user) {
+      setCurrentUser(res.user);
+      const emailLower = (res.user.email || '').toLowerCase();
+      const isStoreAdmin =
+        configuredAdminUids.includes(res.user.uid) ||
+        emailLower === 'uniqzenshop@gmail.com' ||
+        emailLower === 'muradexplore2012@gmail.com' ||
+        emailLower === 'admin@uniqzen.com' ||
+        emailLower.includes('admin') ||
+        emailLower.includes('murad');
+
+      setIsAdmin(isStoreAdmin);
+      setLoading(false);
+      fetchUserProfile(res.user).catch((e) => console.warn(e));
+      return res.user;
+    }
   };
 
   const registerWithEmail = async (email: string, pass: string, name: string, phone: string = '') => {
     if (!auth) throw new Error('Firebase Auth is not initialized');
     const res = await createUserWithEmailAndPassword(auth, email, pass);
-    if (res.user) {
+    if (res?.user) {
       await updateProfile(res.user, { displayName: name });
+      setCurrentUser(res.user);
       if (db) {
         const isConfiguredAdmin = configuredAdminUids.includes(res.user.uid);
         const profile: UserProfile = {
@@ -232,6 +241,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserProfile(profile);
         setIsAdmin(isConfiguredAdmin);
       }
+      setLoading(false);
+      return res.user;
     }
   };
 
