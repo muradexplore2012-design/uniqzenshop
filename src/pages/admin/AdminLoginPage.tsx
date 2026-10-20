@@ -18,6 +18,16 @@ export const AdminLoginPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // While checking redirect authentication:
+  if (authLoading && !currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-secondary" />
+        <p className="text-xs text-slate-400 font-medium">Signing into Admin...</p>
+      </div>
+    );
+  }
+
   // If already logged in and confirmed admin, redirect directly
   if (currentUser && isAdmin) {
     return <Navigate to="/admin" replace />;
