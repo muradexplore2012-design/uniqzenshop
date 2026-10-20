@@ -45,6 +45,22 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'accessories', name: 'Smart Accessories', slug: 'accessories', active: true, sortOrder: 6 },
 ];
 
+/**
+ * Auto-generates a clean, readable SKU from the product title
+ * e.g. "Haylou Solar Plus RT3" -> "UZ-HAYLO-SOLAR-PLUS"
+ */
+export const generateSkuFromTitle = (title: string): string => {
+  if (!title || !title.trim()) return '';
+  const clean = slugify(title).toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  const parts = clean
+    .split('-')
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((w) => (w.length <= 5 ? w : w.slice(0, 5)));
+  if (parts.length === 0) return '';
+  return `UZ-${parts.join('-')}`.slice(0, 22);
+};
+
 export const AdminProductFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id && id !== 'new');
@@ -62,6 +78,8 @@ export const AdminProductFormPage: React.FC = () => {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [sku, setSku] = useState('');
+  const [isSkuCustomized, setIsSkuCustomized] = useState(false);
+  const [isSlugCustomized, setIsSlugCustomized] = useState(false);
   const [brand, setBrand] = useState('');
   const [modelNumber, setModelNumber] = useState('');
   const [category, setCategory] = useState('');
@@ -129,8 +147,10 @@ export const AdminProductFormPage: React.FC = () => {
       getProductById(id).then((p) => {
         if (p) {
           setName(p.name);
-          setSlug(p.slug);
-          setSku(p.sku);
+          setSlug(p.slug || slugify(p.name));
+          setSku(p.sku || generateSkuFromTitle(p.name));
+          setIsSlugCustomized(Boolean(p.slug));
+          setIsSkuCustomized(Boolean(p.sku));
           setBrand(p.brand);
           setModelNumber(p.modelNumber || '');
           setCategory(p.category);
@@ -165,8 +185,11 @@ export const AdminProductFormPage: React.FC = () => {
 
   const handleNameChange = (val: string) => {
     setName(val);
-    if (!isEditing) {
+    if (!isSlugCustomized) {
       setSlug(slugify(val));
+    }
+    if (!isSkuCustomized) {
+      setSku(generateSkuFromTitle(val));
     }
   };
 
@@ -249,7 +272,7 @@ export const AdminProductFormPage: React.FC = () => {
     const generatedSlug = slug.trim() || slugify(name);
     const generatedSku = sku.trim()
       ? sku.trim().toUpperCase()
-      : `UZ-${generatedSlug.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)}-${Math.floor(100 + Math.random() * 900)}`;
+      : generateSkuFromTitle(name) || `UZ-${generatedSlug.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)}-${Math.floor(100 + Math.random() * 900)}`;
 
     setSaving(true);
 
@@ -435,28 +458,52 @@ export const AdminProductFormPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                SKU (Stock Keeping Unit)
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span>SKU (Stock Keeping Unit)</span>
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  Auto-fill
+                </span>
               </label>
               <input
                 type="text"
-                placeholder="e.g. UZ-HL-RT3-BLK (Auto-generated if blank)"
+                placeholder="e.g. UZ-HAYLO-SOLAR-PLUS"
                 value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 uppercase tracking-wider font-mono outline-none"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSku(val);
+                  if (val.trim()) {
+                    setIsSkuCustomized(true);
+                  } else {
+                    setIsSkuCustomized(false);
+                    setSku(generateSkuFromTitle(name));
+                  }
+                }}
+                className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 uppercase tracking-wider font-mono outline-none bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-brand-primary"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                URL Slug
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span>URL Slug</span>
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  Auto-fill
+                </span>
               </label>
               <input
                 type="text"
                 value={slug}
-                placeholder="Auto-generated from title"
-                onChange={(e) => setSlug(e.target.value)}
-                className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono text-slate-600 outline-none"
+                placeholder="e.g. haylou-solar-plus-rt3"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSlug(val);
+                  if (val.trim()) {
+                    setIsSlugCustomized(true);
+                  } else {
+                    setIsSlugCustomized(false);
+                    setSlug(slugify(name));
+                  }
+                }}
+                className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono text-slate-600 outline-none bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-brand-primary"
               />
             </div>
 
