@@ -177,9 +177,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    // Safety timer: Never hold loading state for more than 200ms
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 200);
+
     // Check if returning from a Google redirect sign-in
     getRedirectResult(auth)
       .then(async (result) => {
+        clearTimeout(safetyTimer);
         if (result?.user) {
           setCurrentUser(result.user);
           const email = (result.user.email || '').toLowerCase();
@@ -194,16 +200,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           syncUserCache(result.user, isStoreAdmin);
           setLoading(false); // Unblock UI immediately!
           fetchUserProfile(result.user).catch((e) => console.warn(e));
-        } else if (!auth.currentUser && !cachedUser) {
+        } else {
           setLoading(false);
         }
       })
       .catch((err) => {
+        clearTimeout(safetyTimer);
         console.error('Redirect sign-in error:', err);
         setLoading(false);
       });
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      clearTimeout(safetyTimer);
       setCurrentUser(user);
       if (user) {
         // Immediate synchronous admin check to eliminate loading delays and access denied race conditions
@@ -228,7 +236,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      unsubscribe();
+    };
   }, []);
 
   const loginWithEmail = async (email: string, pass: string) => {
