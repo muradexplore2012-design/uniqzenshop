@@ -199,7 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const loginWithEmail = async (email: string, pass: string) => {
+  const loginWithEmail = async (email: string, pass: string): Promise<void> => {
     if (!auth) throw new Error('Firebase Auth is not initialized');
     const res = await signInWithEmailAndPassword(auth, email, pass);
     if (res?.user) {
@@ -216,11 +216,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAdmin(isStoreAdmin);
       setLoading(false);
       fetchUserProfile(res.user).catch((e) => console.warn(e));
-      return res.user;
     }
   };
 
-  const registerWithEmail = async (email: string, pass: string, name: string, phone: string = '') => {
+  const registerWithEmail = async (email: string, pass: string, name: string, phone: string = ''): Promise<void> => {
     if (!auth) throw new Error('Firebase Auth is not initialized');
     const res = await createUserWithEmailAndPassword(auth, email, pass);
     if (res?.user) {
@@ -242,7 +241,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAdmin(isConfiguredAdmin);
       }
       setLoading(false);
-      return res.user;
     }
   };
 
