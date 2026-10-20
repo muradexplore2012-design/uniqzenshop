@@ -107,12 +107,20 @@ export const AccountPage: React.FC = () => {
     }
   };
 
-  // While auth state is initializing or checking credentials: show smooth spinner
+  // While auth state is initializing or checking credentials: show smooth native skeleton
   if (loading && !currentUser) {
     return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
-        <p className="text-xs text-slate-500 font-medium">Checking authentication...</p>
+      <div className="max-w-md mx-auto px-4 py-16 animate-pulse">
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-subtle space-y-6">
+          <div className="flex flex-col items-center space-y-3">
+            <div className="w-12 h-12 bg-slate-200 rounded-2xl" />
+            <div className="w-36 h-5 bg-slate-200 rounded-lg" />
+            <div className="w-48 h-3 bg-slate-100 rounded-lg" />
+          </div>
+          <div className="h-10 bg-slate-100 rounded-xl" />
+          <div className="h-10 bg-slate-100 rounded-xl" />
+          <div className="h-11 bg-slate-200 rounded-xl" />
+        </div>
       </div>
     );
   }

@@ -49,11 +49,55 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+const CACHE_USER_KEY = 'uniqzen_auth_cached_user';
+const CACHE_ADMIN_KEY = 'uniqzen_auth_cached_is_admin';
+
+const getInitialCachedUser = (): any => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(CACHE_USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const getInitialIsAdmin = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem(CACHE_ADMIN_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
+
+const syncUserCache = (user: User | null, adminFlag: boolean) => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (user) {
+      localStorage.setItem(
+        CACHE_USER_KEY,
+        JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+        })
+      );
+      localStorage.setItem(CACHE_ADMIN_KEY, adminFlag ? 'true' : 'false');
+    } else {
+      localStorage.removeItem(CACHE_USER_KEY);
+      localStorage.removeItem(CACHE_ADMIN_KEY);
+    }
+  } catch {}
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(auth?.currentUser || null);
+  const cachedUser = getInitialCachedUser();
+  const [currentUser, setCurrentUser] = useState<User | null>(auth?.currentUser || cachedUser || null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(!auth?.currentUser);
+  const [isAdmin, setIsAdmin] = useState<boolean>(getInitialIsAdmin);
+  const [loading, setLoading] = useState<boolean>(!auth?.currentUser && !cachedUser);
 
   // Configured Admin UIDs (supports comma-separated list or default initial administrator UID)
   const configuredAdminUids = (
@@ -147,9 +191,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email.includes('admin') ||
             email.includes('murad');
           setIsAdmin(isStoreAdmin);
+          syncUserCache(result.user, isStoreAdmin);
           setLoading(false); // Unblock UI immediately!
           fetchUserProfile(result.user).catch((e) => console.warn(e));
-        } else if (!auth.currentUser) {
+        } else if (!auth.currentUser && !cachedUser) {
           setLoading(false);
         }
       })
@@ -172,11 +217,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email.includes('murad');
         
         setIsAdmin(isAdminImmediate);
+        syncUserCache(user, isAdminImmediate);
         setLoading(false); // Unblock UI immediately!
         fetchUserProfile(user); // Sync Firestore profile in background
       } else {
         setUserProfile(null);
         setIsAdmin(false);
+        syncUserCache(null, false);
         setLoading(false);
       }
     });
@@ -230,6 +277,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email.includes('murad');
 
         setIsAdmin(isStoreAdmin);
+        syncUserCache(res.user, isStoreAdmin);
+        setLoading(false);
         fetchUserProfile(res.user).catch((e) => console.warn(e));
         return res.user;
       }
@@ -263,6 +312,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email.includes('murad');
 
       setIsAdmin(isStoreAdmin);
+      syncUserCache(res.user, isStoreAdmin);
+      setLoading(false);
       fetchUserProfile(res.user).catch((e) => console.warn(e));
       return res.user;
     }
@@ -284,6 +335,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     if (!auth) return;
     await fbSignOut(auth);
+    syncUserCache(null, false);
     setCurrentUser(null);
     setUserProfile(null);
     setIsAdmin(false);
